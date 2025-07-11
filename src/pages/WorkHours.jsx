@@ -19,6 +19,27 @@ const formatDateRange = (startDate) => {
   return `${startStr} - ${endStr}`;
 };
 
+// Funksion i ri për të kontrolluar nëse një javë është aktive (e tanishme)
+const isWeekActive = (weekLabel) => {
+  const today = new Date();
+  const [weekStart, weekEnd] = weekLabel.split(" - ");
+  const startDate = new Date(weekStart);
+  const endDate = new Date(weekEnd);
+  
+  // Java është aktive nëse data e sotme është midis fillimit dhe fundit të javës
+  return today >= startDate && today <= endDate;
+};
+
+// Funksion për të kontrolluar nëse një javë është e kaluar
+const isWeekPast = (weekLabel) => {
+  const today = new Date();
+  const [weekEnd] = weekLabel.split(" - ");
+  const endDate = new Date(weekEnd);
+  
+  // Java është e kaluar nëse data e sotme është pas fundit të javës
+  return today > endDate;
+};
+
 export default function WorkHours() {
   const { user, setUser } = useAuth();
   const isManager = user?.role === "manager";
@@ -304,18 +325,31 @@ export default function WorkHours() {
     return new Date(bStart) - new Date(aStart);
   });
 
-  // Nda javën aktuale nga të tjerat dhe filtro javët e ardhshme
+  // Për manager: nda javët sipas logjikës së re
   const today = new Date();
-  const otherWeeks = sortedWeeks.filter(weekLabel => {
-    if (weekLabel === currentWeekLabel) return false;
+  let activeWeek = null;
+  let pastWeeks = [];
+
+  if (isManager) {
+    // Gjej javën aktive (java e tanishme)
+    activeWeek = sortedWeeks.find(weekLabel => isWeekActive(weekLabel));
     
-    // Kontrollo nëse java është në të kaluarën ose aktuale
-    const [weekStart] = weekLabel.split(' - ');
-    const weekStartDate = new Date(weekStart);
-    
-    // Shfaq vetëm javët që kanë filluar para ose në ditën e sotme
-    return weekStartDate <= today;
-  });
+    // Gjej javët e kaluara (që kanë përfunduar)
+    pastWeeks = sortedWeeks.filter(weekLabel => isWeekPast(weekLabel));
+  } else {
+    // Për admin: logjika e vjetër
+    const otherWeeks = sortedWeeks.filter(weekLabel => {
+      if (weekLabel === currentWeekLabel) return false;
+      
+      // Kontrollo nëse java është në të kaluarën ose aktuale
+      const [weekStart] = weekLabel.split(' - ');
+      const weekStartDate = new Date(weekStart);
+      
+      // Shfaq vetëm javët që kanë filluar para ose në ditën e sotme
+      return weekStartDate <= today;
+    });
+    pastWeeks = otherWeeks;
+  }
 
   if (loading) {
     return (
@@ -431,11 +465,16 @@ export default function WorkHours() {
         </div>
       )}
 
-      {isManager && (
+      {/* Për manager: shfaq vetëm javën aktive për editim */}
+      {isManager && activeWeek && (
         <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+          <div className="bg-blue-50 p-4 rounded-lg mb-4">
+            <h3 className="text-lg font-semibold text-blue-800 mb-2">📝 Java Aktive - {activeWeek}</h3>
+            <p className="text-blue-600 text-sm">Kjo është java aktuale ku mund të shtoni orët e punës.</p>
+          </div>
           <WorkHoursTable
             employees={employees}
-            weekLabel={currentWeekLabel}
+            weekLabel={activeWeek}
             data={hourData}
             onChange={handleChange}
             readOnly={false}
@@ -448,7 +487,39 @@ export default function WorkHours() {
         </form>
       )}
 
-      {(saved || isAdmin) && (
+      {/* Për manager: shfaq javët e kaluara të fshehura */}
+      {isManager && pastWeeks.length > 0 && (
+        <div className="mt-8">
+          <h3 className="text-lg font-semibold mb-4 text-gray-700">📚 Javët e Kaluara</h3>
+          <p className="text-gray-600 text-sm mb-4">Klikoni për të shfaqur orët e javëve të kaluara:</p>
+          {pastWeeks.map((weekLabel) => (
+            <div key={weekLabel} className="mb-4">
+              <button 
+                className="text-blue-600 underline mb-2 hover:text-blue-800 transition-colors" 
+                onClick={() => toggleWeek(weekLabel)}
+              >
+                {expandedWeeks.includes(weekLabel) ? "▼ Fshih" : "▶ Shfaq"} {weekLabel}
+              </button>
+              {expandedWeeks.includes(weekLabel) && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <WorkHoursTable
+                    employees={employees}
+                    weekLabel={weekLabel}
+                    data={hourData}
+                    onChange={handleChange}
+                    readOnly={true}
+                    showPaymentControl={isAdmin}
+                    siteOptions={siteOptions}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Për admin: logjika e vjetër */}
+      {(saved || isAdmin) && !isManager && (
         <div className="mt-12">
           <h3 className="text-xl font-semibold mb-4 text-center">📊 Java Aktuale - {currentWeekLabel}</h3>
           <WorkHoursTable
@@ -463,7 +534,7 @@ export default function WorkHours() {
         </div>
       )}
 
-      {isAdmin && otherWeeks.map((weekLabel) => (
+      {isAdmin && !isManager && pastWeeks.map((weekLabel) => (
         <div key={weekLabel} className="mt-6">
           <button className="text-blue-600 underline mb-2" onClick={() => toggleWeek(weekLabel)}>
             {expandedWeeks.includes(weekLabel) ? "▼ Fshih" : "▶ Shfaq"} {weekLabel}
@@ -493,6 +564,8 @@ export default function WorkHours() {
             <p><strong>User Email:</strong> {user?.email}</p>
             <p><strong>Employees Found:</strong> {employees.length}</p>
             <p><strong>Current Week:</strong> {currentWeekLabel}</p>
+            <p><strong>Active Week:</strong> {activeWeek || 'None'}</p>
+            <p><strong>Past Weeks:</strong> {pastWeeks.length}</p>
             <p><strong>Site Options:</strong> {siteOptions.length > 0 ? siteOptions.join(', ') : 'None'}</p>
             <details className="mt-2">
               <summary className="cursor-pointer font-semibold">Show Employees Data</summary>
