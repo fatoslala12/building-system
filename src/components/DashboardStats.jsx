@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import api from "../api";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, Legend
 } from "recharts";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import Card, { CardHeader, CardTitle, CardContent } from "../components/ui/Card";
@@ -9,6 +10,13 @@ import { Container, Grid, Stack } from "../components/ui/Layout";
 import { CountStatCard, MoneyStatCard } from "../components/ui/StatCard";
 import { StatusBadge, PaymentBadge } from "../components/ui/Badge";
 import EmptyState, { NoTasksEmpty } from "../components/ui/EmptyState";
+import { Download, Filter, Calendar, TrendingUp, Clock, Users, MapPin, RefreshCw } from "lucide-react";
+import { debounce } from "../utils/debounce";
+import { useLocalStorage } from "../hooks/useLocalStorage";
+import * as XLSX from 'xlsx';
+import { TaskProgress, SiteProgress, CircularProgress } from "./ui/ProgressIndicator";
+import ExportFunctionality from "./ExportFunctionality";
+import QuickFilters from "./QuickFilters";
 
 // Funksion për të kthyer snake_case në camelCase për një objekt ose array
 function snakeToCamel(obj) {
@@ -24,6 +32,17 @@ function snakeToCamel(obj) {
   }
   return obj;
 }
+
+// Export functionality
+const exportToExcel = (data, filename) => {
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+  XLSX.writeFile(workbook, `${filename}.xlsx`);
+};
+
+// Chart colors
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
 export default function DashboardStats() {
   const [contracts, setContracts] = useState([]);
@@ -44,13 +63,82 @@ export default function DashboardStats() {
   const [taskFilter, setTaskFilter] = useState('ongoing');
   const [allTasks, setAllTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [chartType, setChartType] = useState('bar');
+  const [timeRange, setTimeRange] = useState('week');
+  const [cachedData, setCachedData] = useLocalStorage('dashboard-stats-cache', {});
+  const [lastFetch, setLastFetch] = useLocalStorage('dashboard-stats-last-fetch', 0);
+  const [activeFilters, setActiveFilters] = useState({});
 
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
 
-  // useEffect për të marrë të dhënat dhe llogaritë dashboard stats
-  useEffect(() => {
-    const fetchData = async () => {
+  // Memoized calculations
+  const activeSites = useMemo(() => 
+    [...new Set(contracts.filter(c => c.status === "Aktive").map(c => c.siteName))],
+    [contracts]
+  );
+
+  const activeEmployees = useMemo(() => 
+    employees.filter(e => e.status === "Aktiv"),
+    [employees]
+  );
+
+  const filteredTasks = useMemo(() => {
+    let filtered = allTasks.filter(t => taskFilter === 'all' ? true : t.status === taskFilter);
+    
+    // Apply quick filters
+    if (Object.keys(activeFilters).length > 0) {
+      filtered = filtered.filter(item => {
+        // Site filter
+        if (activeFilters.site && activeFilters.site.length > 0) {
+          const itemSite = item.site_name || item.siteName;
+          if (!activeFilters.site.includes(itemSite)) return false;
+        }
+
+        // Employee filter
+        if (activeFilters.employee && activeFilters.employee.length > 0) {
+          const itemEmployee = item.assigned_to || item.assignedTo;
+          if (!activeFilters.employee.includes(itemEmployee)) return false;
+        }
+
+        // Date range filter
+        if (activeFilters.dateRange) {
+          const itemDate = new Date(item.due_date || item.created_at);
+          if (itemDate < activeFilters.dateRange.min || itemDate > activeFilters.dateRange.max) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+    }
+    
+    return filtered;
+  }, [allTasks, taskFilter, activeFilters]);
+
+  // Chart data preparation
+  const chartData = useMemo(() => {
+    if (!dashboardStats.workHoursBysite) return [];
+    
+    switch (chartType) {
+      case 'pie':
+        return dashboardStats.workHoursBysite.map((item, index) => ({
+          ...item,
+          fill: COLORS[index % COLORS.length]
+        }));
+      case 'area':
+        return dashboardStats.workHoursBysite.map((item, index) => ({
+          ...item,
+          fill: COLORS[index % COLORS.length]
+        }));
+      default:
+        return dashboardStats.workHoursBysite;
+    }
+  }, [dashboardStats.workHoursBysite, chartType]);
+
+  // Debounced API calls
+  const debouncedFetchData = useCallback(
+    debounce(async () => {
       try {
         setLoading(true);
         
@@ -59,12 +147,8 @@ export default function DashboardStats() {
         try {
           const dashboardRes = await api.get("/api/work-hours/dashboard-stats");
           dashboardData = snakeToCamel(dashboardRes.data || {});
-          console.log('[DEBUG] Dashboard API success:', dashboardData);
-          console.log('[DEBUG] Dashboard totalPaid:', dashboardData?.totalPaid);
-          console.log('[DEBUG] Dashboard top5Employees:', dashboardData?.top5Employees);
         } catch (dashboardError) {
           console.log('[DEBUG] Dashboard API failed, using fallback:', dashboardError.message);
-          console.error('[DEBUG] Dashboard API error details:', dashboardError);
         }
         
         const [contractsRes, employeesRes, invoicesRes, tasksRes, expensesRes, paymentsRes, workHoursRes] = await Promise.all([
@@ -101,8 +185,6 @@ export default function DashboardStats() {
         if (dashboardData && Object.keys(dashboardData).length > 0) {
           setDashboardStats(dashboardData);
         } else {
-          console.log('[DEBUG] Calculating dashboard stats manually');
-          
           // Manual calculation as fallback
           const thisWeekPayments = allPayments.filter(p => p.weekLabel === thisWeek);
           const paidThisWeek = thisWeekPayments.filter(p => p.isPaid === true);
@@ -194,22 +276,66 @@ export default function DashboardStats() {
         });
         setUnpaidExpenses(unpaidExpensesList);
         
+        // Cache the data
+        setCachedData({
+          contracts: contractsRes.data,
+          employees: employeesRes.data,
+          tasks: allTasksData,
+          dashboardStats: dashboardStats,
+          timestamp: Date.now()
+        });
+        setLastFetch(Date.now());
+        
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
         setLoading(false);
       }
+    }, 500),
+    []
+  );
+
+  // useEffect për të marrë të dhënat dhe llogaritë dashboard stats
+  useEffect(() => {
+    const shouldRefetch = () => {
+      const now = Date.now();
+      const cacheAge = now - lastFetch;
+      return cacheAge > 5 * 60 * 1000; // 5 minutes
     };
-    fetchData();
+
+    if (!shouldRefetch() && cachedData.contracts && cachedData.employees) {
+      setContracts(snakeToCamel(cachedData.contracts));
+      setEmployees(snakeToCamel(cachedData.employees));
+      setAllTasks(cachedData.tasks || []);
+      if (cachedData.dashboardStats) {
+        setDashboardStats(cachedData.dashboardStats);
+      }
+      setLoading(false);
+      return;
+    }
+
+    debouncedFetchData();
   }, []);
 
+  // Export functions
+  const exportTasks = useCallback(() => {
+    const exportData = filteredTasks.map(task => ({
+      'Përshkrimi': task.description || task.title,
+      'Site': task.site_name || task.siteName,
+      'Statusi': task.status,
+      'Afati': task.due_date ? new Date(task.due_date).toLocaleDateString() : '',
+      'Caktuar nga': task.assigned_by || task.assignedBy
+    }));
+    exportToExcel(exportData, 'detyrat');
+  }, [filteredTasks]);
 
-
-  const activeSites = [...new Set(contracts.filter(c => c.status === "Aktive").map(c => c.siteName))];
-  const activeEmployees = employees.filter(e => e.status === "Aktiv");
-
-  // Filtrim i detyrave sipas statusit
-  const filteredTasks = allTasks.filter(t => taskFilter === 'all' ? true : t.status === taskFilter);
+  const exportWorkHours = useCallback(() => {
+    const exportData = dashboardStats.workHoursBysite.map(site => ({
+      'Site': site.site,
+      'Orë të punuara': site.hours
+    }));
+    exportToExcel(exportData, 'ore_pune');
+  }, [dashboardStats.workHoursBysite]);
 
   // Merr emër + mbiemër për user-in (mos shfaq email në asnjë rast)
   const user = JSON.parse(localStorage.getItem("user"));
@@ -224,23 +350,34 @@ export default function DashboardStats() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10 space-y-12 bg-gradient-to-br from-blue-50 via-white to-purple-50 min-h-screen">
-      {/* HEADER MODERN */}
-      <div className="flex flex-col md:flex-row items-center gap-6 bg-gradient-to-r from-blue-100 to-purple-100 rounded-2xl shadow-lg px-10 py-6 mb-8 border-b-2 border-blue-200 animate-fade-in w-full">
-        <div className="flex-shrink-0 bg-blue-100 rounded-xl p-3 shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#7c3aed" className="w-12 h-12">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-8 bg-gradient-to-br from-blue-50 via-white to-purple-50 min-h-screen">
+      {/* HEADER MODERN - Reduced font sizes */}
+      <div className="flex flex-col md:flex-row items-center gap-4 bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl shadow-lg px-6 py-4 mb-6 border-b-2 border-blue-200 animate-fade-in w-full">
+        <div className="flex-shrink-0 bg-blue-100 rounded-lg p-2 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#7c3aed" className="w-8 h-8">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3.75 7.5h16.5M4.5 21h15a.75.75 0 00.75-.75V7.5a.75.75 0 00-.75-.75h-15a.75.75 0 00-.75.75v12.75c0 .414.336.75.75.75z" />
           </svg>
         </div>
         <div>
-          <h2 className="text-2xl font-bold mb-2 text-gray-900">Mirë se erdhe{userFullName ? `, ${userFullName}` : ""}</h2>
-          <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-purple-700 tracking-tight mb-1 drop-shadow">Paneli i Administrimit</div>
-          <div className="text-lg font-medium text-purple-700">Statistika, detyra, pagesa dhe më shumë</div>
+          <h2 className="text-lg font-bold mb-1 text-gray-900">Mirë se erdhe{userFullName ? `, ${userFullName}` : ""}</h2>
+          <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-purple-700 tracking-tight mb-1 drop-shadow">Paneli i Administrimit</div>
+          <div className="text-sm font-medium text-purple-700">Statistika, detyra, pagesa dhe më shumë</div>
+        </div>
+        
+        {/* Quick Actions */}
+        <div className="flex gap-2 ml-auto">
+          <button
+            onClick={debouncedFetchData}
+            className="p-2 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+            title="Rifresko"
+          >
+            <RefreshCw className="w-4 h-4 text-blue-600" />
+          </button>
         </div>
       </div>
 
-      {/* Statistika kryesore */}
-      <Grid cols={{ xs: 1, sm: 2, lg: 4 }} gap="lg" className="mb-12">
+      {/* Statistika kryesore - Reduced font sizes */}
+      <Grid cols={{ xs: 1, sm: 2, lg: 4 }} gap="md" className="mb-8">
         <CountStatCard
           title="Site aktive"
           count={activeSites.length}
@@ -265,30 +402,55 @@ export default function DashboardStats() {
         />
       </Grid>
 
-      {/* Detyrat - më të dukshme */}
-      <div className="bg-gradient-to-r from-yellow-50 via-white to-green-50 p-8 rounded-2xl shadow-xl col-span-full border border-yellow-200">
-        <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">📋 Detyrat</h3>
-        <div className="mb-4 flex gap-4 items-center">
-          <label className="font-medium">Filtro:</label>
-          <select value={taskFilter} onChange={e => setTaskFilter(e.target.value)} className="border p-2 rounded">
-            <option value="ongoing">Vetëm aktive</option>
-            <option value="completed">Vetëm të përfunduara</option>
-            <option value="all">Të gjitha</option>
-          </select>
+      {/* Detyrat - më të dukshme - Reduced font sizes */}
+      <div className="bg-gradient-to-r from-yellow-50 via-white to-green-50 p-6 rounded-xl shadow-lg col-span-full border border-yellow-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold flex items-center gap-2">📋 Detyrat</h3>
+          <div className="flex gap-2 items-center">
+            <label className="text-sm font-medium">Filtro:</label>
+            <select 
+              value={taskFilter} 
+              onChange={e => setTaskFilter(e.target.value)} 
+              className="border p-1.5 rounded text-sm"
+            >
+              <option value="ongoing">Vetëm aktive</option>
+              <option value="completed">Vetëm të përfunduara</option>
+              <option value="all">Të gjitha</option>
+            </select>
+          </div>
         </div>
-        <div className="mb-4 flex flex-wrap gap-6">
-          <div className="bg-blue-100 px-6 py-3 rounded-xl text-blue-800 font-bold shadow">Totali: {allTasks.length}</div>
-          <div className="bg-green-100 px-6 py-3 rounded-xl text-green-800 font-bold shadow">✅ Të përfunduara: {allTasks.filter(t => t.status === 'completed').length}</div>
-          <div className="bg-yellow-100 px-6 py-3 rounded-xl text-yellow-800 font-bold shadow">🕒 Në vazhdim: {allTasks.filter(t => t.status === 'ongoing').length}</div>
+        
+        {/* Progress Indicators */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <TaskProgress 
+            completed={allTasks.filter(t => t.status === 'completed').length}
+            total={allTasks.length}
+            label="Përparimi i Detyrave"
+          />
+          <div className="flex items-center justify-center">
+            <CircularProgress 
+              progress={allTasks.filter(t => t.status === 'completed').length}
+              total={allTasks.length}
+              color="green"
+              size={80}
+            />
+          </div>
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{allTasks.length}</div>
+              <div className="text-xs text-blue-700">Total Detyra</div>
+            </div>
+          </div>
         </div>
+        
         {filteredTasks.length > 0 ? (
-          <ul className="space-y-3">
+          <ul className="space-y-2">
             {filteredTasks.map((t, idx) => (
-              <li key={t.id || idx} className="flex flex-col md:flex-row md:items-center gap-4 bg-white rounded-xl p-4 shadow border border-blue-100">
+              <li key={t.id || idx} className="flex flex-col md:flex-row md:items-center gap-3 bg-white rounded-lg p-3 shadow border border-blue-100">
                 <StatusBadge status={t.status === 'completed' ? 'completed' : 'ongoing'} />
-                <span className="font-semibold flex-1 text-lg">{t.description || t.title || ''}</span>
-                <span className="text-lg text-blue-700 font-bold">{t.site_name || t.siteName || ''}</span>
-                <span className="text-lg text-purple-700 font-bold">Afati: {t.due_date ? new Date(t.due_date).toLocaleDateString() : ''}</span>
+                <span className="font-semibold flex-1 text-sm">{t.description || t.title || ''}</span>
+                <span className="text-sm text-blue-700 font-bold">{t.site_name || t.siteName || ''}</span>
+                <span className="text-sm text-purple-700 font-bold">Afati: {t.due_date ? new Date(t.due_date).toLocaleDateString() : ''}</span>
                 <span className="text-xs text-gray-500">Nga: {t.assigned_by || t.assignedBy || ''}</span>
               </li>
             ))}
@@ -298,98 +460,173 @@ export default function DashboardStats() {
         )}
       </div>
 
-      {/* Grafik për site */}
-      <div className="bg-white p-8 rounded-2xl shadow-md col-span-full">
-        <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">📊 Ora të punuara këtë javë sipas site-ve ({dashboardStats.thisWeek})</h3>
-        <div className="mb-4 text-lg font-semibold text-gray-700">
-          Total orë të punuara: <span className="text-blue-600">{dashboardStats.totalWorkHours}</span> orë
+      {/* Export Functionality and Quick Filters */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ExportFunctionality data={allTasks} type="tasks" />
+          <ExportFunctionality data={employees} type="employees" />
+          <ExportFunctionality data={dashboardStats.workHoursBysite} type="workHours" />
+          <ExportFunctionality data={dashboardStats.top5Employees} type="payments" />
         </div>
-        {dashboardStats.workHoursBysite && dashboardStats.workHoursBysite.length > 0 ? (
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={dashboardStats.workHoursBysite} layout="vertical" margin={{ left: 50 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" label={{ value: "Orë", position: "insideBottomRight", offset: -5 }} />
-              <YAxis type="category" dataKey="site" width={200} tick={{ fontSize: 18, fontWeight: 'bold', fill: '#3b82f6' }} />
-              <Tooltip />
-              <Bar dataKey="hours" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={30} />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <p className="text-gray-500 italic text-center py-8">Nuk ka orë pune të regjistruara për këtë javë</p>
-        )}
+        <QuickFilters 
+          data={allTasks} 
+          onFilterChange={setActiveFilters}
+          filters={activeFilters}
+        />
       </div>
 
-      {/* Top 5 më të paguar */}
-      <div className="bg-white p-8 rounded-2xl shadow-md col-span-full">
-        <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">🏅 Top 5 punonjësit më të paguar këtë javë</h3>
+      {/* Grafik për site - Interactive charts */}
+      <div className="bg-white p-6 rounded-xl shadow-md col-span-full">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold flex items-center gap-2">📊 Ora të punuara këtë javë sipas site-ve ({dashboardStats.thisWeek})</h3>
+          <div className="flex gap-2">
+            <select 
+              value={chartType} 
+              onChange={e => setChartType(e.target.value)}
+              className="border p-1.5 rounded text-sm"
+            >
+              <option value="bar">Bar Chart</option>
+              <option value="pie">Pie Chart</option>
+              <option value="area">Area Chart</option>
+            </select>
+          </div>
+        </div>
+        <div className="mb-4 text-sm font-semibold text-gray-700">
+          Total orë të punuara: <span className="text-blue-600">{dashboardStats.totalWorkHours}</span> orë
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Chart */}
+          <div>
+            {chartData && chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                {chartType === 'pie' ? (
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="hours"
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                ) : chartType === 'area' ? (
+                  <AreaChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="site" />
+                    <YAxis />
+                    <Tooltip />
+                    <Area type="monotone" dataKey="hours" stroke="#8884d8" fill="#8884d8" />
+                  </AreaChart>
+                ) : (
+                  <BarChart data={chartData} layout="vertical" margin={{ left: 50 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" label={{ value: "Orë", position: "insideBottomRight", offset: -5 }} />
+                    <YAxis type="category" dataKey="site" width={150} tick={{ fontSize: 12, fontWeight: 'bold', fill: '#3b82f6' }} />
+                    <Tooltip />
+                    <Bar dataKey="hours" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={25} />
+                  </BarChart>
+                )}
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-gray-500 italic text-center py-8 text-sm">Nuk ka orë pune të regjistruara për këtë javë</p>
+            )}
+          </div>
+          
+          {/* Progress Bars */}
+          <div>
+            <h4 className="text-base font-semibold mb-3">Përparimi sipas site-ve</h4>
+            {dashboardStats.workHoursBysite && dashboardStats.workHoursBysite.length > 0 ? (
+              <SiteProgress 
+                sites={activeSites}
+                workHours={dashboardStats.workHoursBysite}
+              />
+            ) : (
+              <p className="text-gray-500 italic text-sm">Nuk ka të dhëna për progresin</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Top 5 më të paguar - Reduced font sizes */}
+      <div className="bg-white p-6 rounded-xl shadow-md col-span-full">
+        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🏅 Top 5 punonjësit më të paguar këtë javë</h3>
         {dashboardStats.top5Employees && dashboardStats.top5Employees.length > 0 ? (
-          <ul className="space-y-3 text-gray-800">
+          <ul className="space-y-2 text-gray-800">
             {dashboardStats.top5Employees.map((e, i) => (
-              <li key={e.id} className="flex items-center gap-6 bg-blue-50 p-5 rounded-2xl shadow-md border border-blue-200">
-                <div className="w-14 h-14 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 font-bold text-xl border-2 border-blue-300 shadow">
+              <li key={e.id} className="flex items-center gap-4 bg-blue-50 p-4 rounded-xl shadow-md border border-blue-200">
+                <div className="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 font-bold text-sm border-2 border-blue-300 shadow">
                   {i + 1}
                 </div>
                 <div className="flex-1">
-                  <p className="font-bold text-lg">
+                  <p className="font-bold text-sm">
                     {e.name}
                   </p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-xs text-gray-600">
                     {e.isPaid ? '✅ E paguar' : '⏳ E papaguar'}
                   </p>
                 </div>
-                <div className="text-blue-700 font-extrabold text-xl">£{e.grossAmount.toFixed(2)}</div>
+                <div className="text-blue-700 font-extrabold text-lg">£{e.grossAmount.toFixed(2)}</div>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-gray-500 italic text-center py-8">Nuk ka pagesa të regjistruara për këtë javë</p>
+          <p className="text-gray-500 italic text-center py-8 text-sm">Nuk ka pagesa të regjistruara për këtë javë</p>
         )}
       </div>
 
-      {/* Faturat e papaguara */}
-      <div className="bg-white p-8 rounded-2xl shadow-md col-span-full">
-        <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">📌 Faturat e Papaguara</h3>
+      {/* Faturat e papaguara - Reduced font sizes */}
+      <div className="bg-white p-6 rounded-xl shadow-md col-span-full">
+        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">📌 Faturat e Papaguara</h3>
         {unpaid.length === 0 ? (
-          <p className="text-gray-500 italic">Të gjitha faturat janë të paguara ✅</p>
+          <p className="text-gray-500 italic text-sm">Të gjitha faturat janë të paguara ✅</p>
         ) : (
-          <ul className="space-y-2 text-red-700 text-base">
+          <ul className="space-y-2 text-red-700 text-sm">
             {unpaid.map((item, idx) => (
-              <li key={idx} className="bg-red-50 p-3 rounded shadow-sm border border-red-200 flex items-center gap-4">
+              <li key={idx} className="bg-red-50 p-3 rounded shadow-sm border border-red-200 flex items-center gap-3">
                 <span className="font-bold">🔴 Kontrata #{item.contractNumber || ''}</span>
                 <span className="font-bold text-black">Nr. Fature: <b>{item.invoiceNumber || ''}</b></span>
                 <span className="font-bold text-black flex items-center gap-1">🏢 Site: <b>{item.siteName || ''}</b></span>
-                <span className="font-bold text-lg flex items-center gap-1">💷 {item.total !== undefined ? `£${item.total.toFixed(2)}` : ''}</span>
+                <span className="font-bold text-base flex items-center gap-1">💷 {item.total !== undefined ? `£${item.total.toFixed(2)}` : ''}</span>
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      {/* Shpenzimet e papaguara */}
-      <div className="bg-white p-8 rounded-2xl shadow-md col-span-full mb-8">
-        <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">📂 Shpenzimet e Papaguara</h3>
+      {/* Shpenzimet e papaguara - Reduced font sizes */}
+      <div className="bg-white p-6 rounded-xl shadow-md col-span-full mb-6">
+        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">📂 Shpenzimet e Papaguara</h3>
         {unpaidExpenses.length === 0 ? (
-          <p className="text-gray-500 italic">Të gjitha shpenzimet janë të paguara ✅</p>
+          <p className="text-gray-500 italic text-sm">Të gjitha shpenzimet janë të paguara ✅</p>
         ) : (
-          <ul className="space-y-2 text-red-700 text-base">
+          <ul className="space-y-2 text-red-700 text-sm">
             {unpaidExpenses.map((item, idx) => (
-              <li key={idx} className="bg-red-50 p-3 rounded shadow-sm border border-red-200 flex items-center gap-4">
+              <li key={idx} className="bg-red-50 p-3 rounded shadow-sm border border-red-200 flex items-center gap-3">
                 <span className="font-bold flex items-center gap-1">📅 {item.date ? new Date(item.date).toLocaleDateString() : ''}</span>
-                <span className="font-bold text-lg">{item.type || ''}</span>
-                <span className="font-bold text-lg flex items-center gap-1">💷 {item.gross !== undefined ? `£${item.gross.toFixed(2)}` : ''}</span>
+                <span className="font-bold text-base">{item.type || ''}</span>
+                <span className="font-bold text-base flex items-center gap-1">💷 {item.gross !== undefined ? `£${item.gross.toFixed(2)}` : ''}</span>
                 <span className="font-bold text-blue-700 flex items-center gap-1">🏢 {(() => {
                   if (!item.contract_id || !contracts.length) return '';
                   const c = contracts.find(c => String(c.id) === String(item.contract_id));
                   return c ? `${c.site_name || c.siteName || ''}` : '';
                 })()}</span>
-                <span className="text-gray-700">{item.description || ''}</span>
+                <span className="text-gray-700 text-xs">{item.description || ''}</span>
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      {/* Butoni Dil */}
+      {/* Butoni Dil - Reduced font size */}
       <div className="flex justify-center mt-4">
         <button
           onClick={() => {
@@ -397,7 +634,7 @@ export default function DashboardStats() {
             localStorage.removeItem('user');
             window.location.href = '/login';
           }}
-          className="bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:from-pink-500 hover:to-red-500 transition text-lg"
+          className="bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold px-6 py-2 rounded-lg shadow-lg hover:from-pink-500 hover:to-red-500 transition text-sm"
         >
           🚪 Dil
         </button>
