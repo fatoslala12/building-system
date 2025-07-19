@@ -9,9 +9,36 @@
   </head>
   <body>
     <div id="root"></div>
+    
+    <!-- Debug Script -->
+    <script>
+      console.log('[DEBUG] HTML loaded');
+      console.log('[DEBUG] Current URL:', window.location.href);
+      console.log('[DEBUG] User Agent:', navigator.userAgent);
+      
+      // Check if assets are loading
+      window.addEventListener('load', function() {
+        console.log('[DEBUG] Page fully loaded');
+        console.log('[DEBUG] Document ready state:', document.readyState);
+        
+        // Check for script loading errors
+        const scripts = document.querySelectorAll('script');
+        console.log('[DEBUG] Total scripts found:', scripts.length);
+        
+        scripts.forEach((script, index) => {
+          console.log(`[DEBUG] Script ${index}:`, script.src || script.textContent.substring(0, 50));
+        });
+      });
+      
+      // Error handler
+      window.addEventListener('error', function(e) {
+        console.error('[DEBUG] Global error:', e.error);
+        console.error('[DEBUG] Error source:', e.filename);
+        console.error('[DEBUG] Error line:', e.lineno);
+      });
+    </script>
+    
     <script type="module" src="/src/main.jsx"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   </body>
 </html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vercel Test - Simple</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        #results { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Vercel Debug Test</h1>
+        <p>Kjo faqe teston nëse Vercel është duke funksionuar saktë.</p>
+        
+        <div class="status info">
+            <strong>Status:</strong> Duke testuar...
+        </div>
+        
+        <button onclick="testBasic()">Test Basic</button>
+        <button onclick="testAPI()">Test API</button>
+        <button onclick="testAssets()">Test Assets</button>
+        <button onclick="clearResults()">Clear Results</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        console.log('[DEBUG] Simple test page loaded');
+        
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            results.appendChild(div);
+            console.log(`[DEBUG] ${message}`);
+        }
+        
+        function testBasic() {
+            addResult('Testing basic functionality...', 'info');
+            
+            // Test DOM
+            if (document.getElementById('results')) {
+                addResult('✅ DOM is working', 'success');
+            } else {
+                addResult('❌ DOM not working', 'error');
+            }
+            
+            // Test JavaScript
+            try {
+                const test = { test: 'value' };
+                JSON.stringify(test);
+                addResult('✅ JavaScript is working', 'success');
+            } catch (e) {
+                addResult('❌ JavaScript error: ' + e.message, 'error');
+            }
+            
+            // Test fetch
+            fetch('/api/health')
+                .then(response => {
+                    addResult(`✅ API response: ${response.status}`, 'success');
+                    return response.text();
+                })
+                .then(data => {
+                    addResult(`✅ API data: ${data.substring(0, 50)}...`, 'success');
+                })
+                .catch(error => {
+                    addResult(`❌ API error: ${error.message}`, 'error');
+                });
+        }
+        
+        function testAPI() {
+            addResult('Testing API endpoints...', 'info');
+            
+            const endpoints = [
+                '/api/health',
+                '/api/auth/login',
+                '/api/notifications'
+            ];
+            
+            endpoints.forEach(endpoint => {
+                fetch(endpoint)
+                    .then(response => {
+                        addResult(`✅ ${endpoint}: ${response.status}`, 'success');
+                    })
+                    .catch(error => {
+                        addResult(`❌ ${endpoint}: ${error.message}`, 'error');
+                    });
+            });
+        }
+        
+        function testAssets() {
+            addResult('Testing asset loading...', 'info');
+            
+            const assets = [
+                '/assets/index-CTFJwWQM.css',
+                '/assets/vendor-C_YFlNAw.js',
+                '/assets/utils-Dz1Kwoq-.js',
+                '/assets/router-aBI8Tgou.js'
+            ];
+            
+            assets.forEach(asset => {
+                fetch(asset)
+                    .then(response => {
+                        if (response.ok) {
+                            addResult(`✅ ${asset}: ${response.status}`, 'success');
+                        } else {
+                            addResult(`❌ ${asset}: ${response.status}`, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        addResult(`❌ ${asset}: ${error.message}`, 'error');
+                    });
+            });
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        // Auto-test on load
+        window.addEventListener('load', function() {
+            addResult('Page loaded successfully', 'success');
+            addResult('Ready for testing', 'info');
+        });
+    </script>
+</body>
+</html>

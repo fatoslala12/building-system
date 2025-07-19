@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Building System - Simple</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    
+    <!-- Debug Script -->
+    <script>
+      console.log('[DEBUG] Simple HTML loaded');
+      console.log('[DEBUG] Current URL:', window.location.href);
+      
+      window.addEventListener('load', function() {
+        console.log('[DEBUG] Simple page fully loaded');
+      });
+      
+      window.addEventListener('error', function(e) {
+        console.error('[DEBUG] Simple global error:', e.error);
+      });
+    </script>
+    
+    <script type="module" src="/src/mainSimple.jsx"></script>
+  </body>
+</html>
