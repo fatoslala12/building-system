@@ -67,15 +67,7 @@ app.use('/api/notifications', notificationRoutes);
 
 // Compression middleware për të reduktuar madhësinë e përgjigjeve (pas routes)
 const compression = require('compression');
-app.use(compression({
-  filter: (req, res) => {
-    // Mos kompreso EventSource responses
-    if (req.path === '/api/notifications/stream') {
-      return false;
-    }
-    return compression.filter(req, res);
-  }
-}));
+app.use(compression());
 
 // Error handling middleware
 app.use((err, req, res, next) => {
