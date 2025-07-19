@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building System - Static</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        p {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            margin: 10px;
+            transition: transform 0.2s;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .test-results {
+            margin-top: 20px;
+            text-align: left;
+        }
+        
+        .test-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .test-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🏗️</div>
+        <h1>Building System</h1>
+        <p>Static version - Testing Vercel deployment</p>
+        
+        <div id="status" class="status info">
+            <strong>Status:</strong> Duke testuar...
+        </div>
+        
+        <button class="button" onclick="testAll()">Test Everything</button>
+        <button class="button" onclick="clearResults()">Clear Results</button>
+        
+        <div id="results" class="test-results"></div>
+    </div>
+
+    <script>
+        console.log('[DEBUG] Static app loaded');
+        
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.innerHTML = `<strong>Status:</strong> ${message}`;
+        }
+        
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-item`;
+            div.innerHTML = `
+                <strong>${new Date().toLocaleTimeString()}:</strong> 
+                <span style="color: ${type === 'success' ? '#155724' : type === 'error' ? '#721c24' : '#0c5460'}">
+                    ${message}
+                </span>
+            `;
+            results.appendChild(div);
+            console.log(`[DEBUG] ${message}`);
+        }
+        
+        async function testAll() {
+            updateStatus('Duke testuar...', 'info');
+            document.getElementById('results').innerHTML = '';
+            
+            // Test 1: Basic functionality
+            addResult('Testing basic functionality...', 'info');
+            
+            if (document.getElementById('results')) {
+                addResult('✅ DOM is working', 'success');
+            } else {
+                addResult('❌ DOM not working', 'error');
+            }
+            
+            // Test 2: JavaScript
+            try {
+                const test = { test: 'value' };
+                JSON.stringify(test);
+                addResult('✅ JavaScript is working', 'success');
+            } catch (e) {
+                addResult('❌ JavaScript error: ' + e.message, 'error');
+            }
+            
+            // Test 3: API
+            addResult('Testing API...', 'info');
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.text();
+                addResult(`✅ API: ${response.status} - ${data.substring(0, 50)}...`, 'success');
+            } catch (error) {
+                addResult(`❌ API error: ${error.message}`, 'error');
+            }
+            
+            // Test 4: Assets
+            addResult('Testing assets...', 'info');
+            const assets = [
+                '/assets/index-CTFJwWQM.css',
+                '/assets/vendor-C_YFlNAw.js',
+                '/assets/utils-Dz1Kwoq-.js'
+            ];
+            
+            for (const asset of assets) {
+                try {
+                    const response = await fetch(asset);
+                    if (response.ok) {
+                        addResult(`✅ ${asset}: ${response.status}`, 'success');
+                    } else {
+                        addResult(`❌ ${asset}: ${response.status}`, 'error');
+                    }
+                } catch (error) {
+                    addResult(`❌ ${asset}: ${error.message}`, 'error');
+                }
+            }
+            
+            updateStatus('Test completed', 'success');
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            updateStatus('Ready for testing', 'info');
+        }
+        
+        // Auto-test on load
+        window.addEventListener('load', function() {
+            updateStatus('Ready for testing', 'success');
+            addResult('Static app loaded successfully', 'success');
+        });
+    </script>
+</body>
+</html>

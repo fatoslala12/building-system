@@ -7,6 +7,14 @@
       "destination": "https://building-system.onrender.com/api/$1"
     },
     {
+      "source": "/static-app",
+      "destination": "/static-app.html"
+    },
+    {
+      "source": "/simple-test",
+      "destination": "/simple-test.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
