@@ -11,13 +11,13 @@ function App() {
     <>
       <Toaster position="top-right" reverseOrder={false} />
       <BrowserRouter>
-        <ToastProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <ToastProvider>
             <NotificationProvider>
               <AppRouter />
             </NotificationProvider>
-          </AuthProvider>
-        </ToastProvider>
+          </ToastProvider>
+        </AuthProvider>
       </BrowserRouter>
     </>
   );
