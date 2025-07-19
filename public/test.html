@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vercel Test</title>
+</head>
+<body>
+    <h1>Vercel is working!</h1>
+    <p>If you can see this, Vercel deployment is successful.</p>
+    <script>
+        // Test API call
+        fetch('/api/health')
+            .then(response => response.text())
+            .then(data => {
+                document.body.innerHTML += '<p>API Test: ' + data + '</p>';
+            })
+            .catch(error => {
+                document.body.innerHTML += '<p>API Error: ' + error.message + '</p>';
+            });
+    </script>
+</body>
+</html>
