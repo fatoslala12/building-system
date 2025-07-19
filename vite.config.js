@@ -8,6 +8,8 @@ export default defineConfig({
   build: {
     target: 'es2015',
     minify: 'terser',
+    outDir: 'dist',
+    assetsDir: 'assets',
     rollupOptions: {
       output: {
         manualChunks: {
