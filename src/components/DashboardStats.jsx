@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../api";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
@@ -45,8 +46,14 @@ export default function DashboardStats() {
   const [allTasks, setAllTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const token = localStorage.getItem("token");
-  const headers = { Authorization: `Bearer ${token}` };
+  const [token, setToken] = useState(null);
+  const [headers, setHeaders] = useState({});
+  
+  useEffect(() => {
+    const storedToken = localStorage.getItem("token");
+    setToken(storedToken);
+    setHeaders({ Authorization: `Bearer ${storedToken}` });
+  }, []);
 
   // useEffect për të marrë të dhënat dhe llogaritë dashboard stats
   useEffect(() => {
@@ -212,12 +219,22 @@ export default function DashboardStats() {
   const filteredTasks = allTasks.filter(t => taskFilter === 'all' ? true : t.status === taskFilter);
 
   // Merr emër + mbiemër për user-in (mos shfaq email në asnjë rast)
-  const user = JSON.parse(localStorage.getItem("user"));
-  const userFullName = (user?.first_name && user?.last_name)
-    ? `${user.first_name} ${user.last_name}`
-    : (user?.firstName && user?.lastName)
-      ? `${user.firstName} ${user.lastName}`
-      : "";
+  const [userFullName, setUserFullName] = useState("");
+  
+  useEffect(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user"));
+      const fullName = (user?.first_name && user?.last_name)
+        ? `${user.first_name} ${user.last_name}`
+        : (user?.firstName && user?.lastName)
+          ? `${user.firstName} ${user.lastName}`
+          : "";
+      setUserFullName(fullName);
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      setUserFullName("");
+    }
+  }, []);
 
   if (loading) {
     return <LoadingSpinner fullScreen={true} size="xl" text="Duke ngarkuar statistikat..." />;
@@ -395,7 +412,7 @@ export default function DashboardStats() {
           onClick={() => {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
-            window.location.href = '/login';
+            window.location.href = '/';
           }}
           className="bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:from-pink-500 hover:to-red-500 transition text-lg"
         >
