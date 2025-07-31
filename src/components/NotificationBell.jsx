@@ -142,7 +142,7 @@ const NotificationBell = () => {
     const diffInDays = Math.floor(diffInHours / 24);
     if (diffInDays < 7) return `${diffInDays}d më parë`;
     
-    return date.toLocaleDateString('sq-AL');
+    return safeLocaleDateString(date, 'sq-AL');
   };
 
   const getNotificationIcon = (type) => {

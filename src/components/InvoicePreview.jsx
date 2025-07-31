@@ -1,9 +1,9 @@
 import React, { forwardRef } from "react";
+import { safeLocaleDateString } from "../utils/localeHelper";
 
 function formatDate(dateStr) {
   if (!dateStr) return "";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("sq-AL", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return safeLocaleDateString(new Date(dateStr), "sq-AL", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 const InvoicePreview = forwardRef(({ invoice, contract }, ref) => {

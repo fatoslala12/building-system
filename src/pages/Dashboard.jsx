@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import DashboardStats from "../components/DashboardStats";
 import api from "../api";
 import axios from "axios";
+import { safeLocaleDateString } from "../utils/localeHelper";
 
 const getStartOfWeek = (offset = 0) => {
   const today = new Date();
@@ -19,7 +20,7 @@ const getStartOfWeek = (offset = 0) => {
 const formatDateRange = (startDate) => {
   const endDate = new Date(startDate);
   endDate.setDate(startDate.getDate() + 6);
-  return `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+  return `${safeLocaleDateString(startDate)} - ${safeLocaleDateString(endDate)}`;
 };
 
 export default function Dashboard() {
