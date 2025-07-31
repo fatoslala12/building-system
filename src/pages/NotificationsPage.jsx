@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { Bell, Search, Filter, Trash2, Check, CheckCheck, Download, FileText } from 'lucide-react';
 import api from '../api';
+import { safeLocaleString } from '../utils/localeHelper';
 
 const NotificationsPage = () => {
   const { user } = useAuth();
@@ -40,7 +41,7 @@ const NotificationsPage = () => {
         n.type,
         n.category || 'system',
         n.isRead ? 'Po' : 'Jo',
-        new Date(n.createdAt).toLocaleString('sq-AL')
+        safeLocaleString(n.createdAt, 'sq-AL')
       ].join(','))
     ].join('\n');
 
@@ -80,7 +81,7 @@ const NotificationsPage = () => {
           <body>
             <h1>Raporti i Njoftimeve</h1>
             <p><strong>Përdoruesi:</strong> ${user?.email}</p>
-            <p><strong>Data e gjenerimit:</strong> ${new Date().toLocaleString('sq-AL')}</p>
+            <p><strong>Data e gjenerimit:</strong> ${safeLocaleString(new Date(), 'sq-AL')}</p>
             <p><strong>Total njoftime:</strong> ${notificationsToExport.length}</p>
             
             <table>
@@ -102,7 +103,7 @@ const NotificationsPage = () => {
                     <td>${n.message}</td>
                     <td>${getNotificationTypeLabel(n.type)}</td>
                     <td><span class="status ${n.isRead ? 'read' : 'unread'}">${n.isRead ? 'E lexuar' : 'E palexuar'}</span></td>
-                    <td>${new Date(n.createdAt).toLocaleString('sq-AL')}</td>
+                    <td>${safeLocaleString(n.createdAt, 'sq-AL')}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -196,7 +197,7 @@ const NotificationsPage = () => {
     const diffInDays = Math.floor(diffInHours / 24);
     if (diffInDays < 7) return `${diffInDays}d më parë`;
     
-    return date.toLocaleDateString('sq-AL');
+    return safeLocaleString(date, 'sq-AL');
   };
 
   const getNotificationIcon = (type) => {

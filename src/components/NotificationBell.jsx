@@ -4,6 +4,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 import { Bell, X, Check, Trash2 } from 'lucide-react';
 import pushNotificationService from '../utils/pushNotifications';
+import { safeLocaleDateString } from '../utils/localeHelper';
 
 const NotificationBell = () => {
   const { user } = useAuth();
