@@ -4,6 +4,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 import { Bell, X, Check, Trash2 } from 'lucide-react';
 import pushNotificationService from '../utils/pushNotifications';
+import { safeLocaleDateString } from '../utils/localeHelper';
 
 const NotificationBell = () => {
   const { user } = useAuth();
@@ -141,7 +142,7 @@ const NotificationBell = () => {
     const diffInDays = Math.floor(diffInHours / 24);
     if (diffInDays < 7) return `${diffInDays}d më parë`;
     
-    return date.toLocaleDateString('sq-AL');
+    return safeLocaleDateString(date, 'sq-AL');
   };
 
   const getNotificationIcon = (type) => {

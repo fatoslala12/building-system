@@ -11,6 +11,7 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
+import { safeLocaleDateString } from "../utils/localeHelper";
 
 // Funksion për formatimin e datës
 const formatDate = (dateString) => {

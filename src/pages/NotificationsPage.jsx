@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { Bell, Search, Filter, Trash2, Check, CheckCheck, Download, FileText } from 'lucide-react';
+import api from '../api';
+import { safeLocaleString } from '../utils/localeHelper';
 
 const NotificationsPage = () => {
   const { user } = useAuth();
@@ -11,64 +13,6 @@ const NotificationsPage = () => {
   const [filterRead, setFilterRead] = useState('all');
   const [selectedNotifications, setSelectedNotifications] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
-
-  // Merr të gjitha njoftimet
-  const fetchNotifications = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/api/notifications');
-      setNotifications(response.data);
-    } catch (error) {
-      console.error('Gabim në marrjen e njoftimeve:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Shëno njoftimin si të lexuar
-  const markAsRead = async (notificationId) => {
-    try {
-      // Përditëso UI menjëherë
-      setNotifications(prev => 
-        prev.map(n => 
-          n.id === notificationId ? { ...n, isRead: true } : n
-        )
-      );
-      
-      // Pastaj dërgo request në backend
-      await api.patch(`/api/notifications/${notificationId}/read`);
-    } catch (error) {
-      console.error('Gabim në shënimin si të lexuar:', error);
-      // Nëse ka gabim, mos kthe mbrapa state-in
-    }
-  };
-
-  // Shëno të gjitha si të lexuara
-  const markAllAsRead = async () => {
-    try {
-      await api.patch('/api/notifications/mark-all-read');
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-      setSelectedNotifications([]);
-      setSelectAll(false);
-    } catch (error) {
-      console.error('Gabim në shënimin e të gjitha si të lexuara:', error);
-      // Nëse ka gabim, përditëso lokal state për UI
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-      setSelectedNotifications([]);
-      setSelectAll(false);
-    }
-  };
-
-  // Fshi njoftimin
-  const deleteNotification = async (notificationId) => {
-    try {
-      await api.delete(`/api/notifications/${notificationId}`);
-      setNotifications(prev => prev.filter(n => n.id !== notificationId));
-      setSelectedNotifications(prev => prev.filter(id => id !== notificationId));
-    } catch (error) {
-      console.error('Gabim në fshirjen e njoftimit:', error);
-    }
-  };
 
   // Fshi njoftimet e zgjedhura
   const deleteSelected = async () => {
@@ -97,7 +41,7 @@ const NotificationsPage = () => {
         n.type,
         n.category || 'system',
         n.isRead ? 'Po' : 'Jo',
-        new Date(n.createdAt).toLocaleString('sq-AL')
+        safeLocaleString(n.createdAt, 'sq-AL')
       ].join(','))
     ].join('\n');
 
@@ -137,7 +81,7 @@ const NotificationsPage = () => {
           <body>
             <h1>Raporti i Njoftimeve</h1>
             <p><strong>Përdoruesi:</strong> ${user?.email}</p>
-            <p><strong>Data e gjenerimit:</strong> ${new Date().toLocaleString('sq-AL')}</p>
+            <p><strong>Data e gjenerimit:</strong> ${safeLocaleString(new Date(), 'sq-AL')}</p>
             <p><strong>Total njoftime:</strong> ${notificationsToExport.length}</p>
             
             <table>
@@ -159,7 +103,7 @@ const NotificationsPage = () => {
                     <td>${n.message}</td>
                     <td>${getNotificationTypeLabel(n.type)}</td>
                     <td><span class="status ${n.isRead ? 'read' : 'unread'}">${n.isRead ? 'E lexuar' : 'E palexuar'}</span></td>
-                    <td>${new Date(n.createdAt).toLocaleString('sq-AL')}</td>
+                    <td>${safeLocaleString(n.createdAt, 'sq-AL')}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -253,7 +197,7 @@ const NotificationsPage = () => {
     const diffInDays = Math.floor(diffInHours / 24);
     if (diffInDays < 7) return `${diffInDays}d më parë`;
     
-    return date.toLocaleDateString('sq-AL');
+    return safeLocaleString(date, 'sq-AL');
   };
 
   const getNotificationIcon = (type) => {
@@ -454,7 +398,11 @@ const NotificationsPage = () => {
             
             {notifications.filter(n => !n.isRead).length > 0 && (
               <button
-                onClick={markAllAsRead}
+                onClick={() => {
+                  markAllAsRead();
+                  setSelectedNotifications([]);
+                  setSelectAll(false);
+                }}
                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
               >
                 <CheckCheck size={16} />
