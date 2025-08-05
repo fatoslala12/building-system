@@ -335,7 +335,7 @@ export default function DashboardStats() {
       </div>
 
       {/* Statistika kryesore */}
-      <Grid cols={{ xs: 1, sm: 2, lg: 4 }} gap="lg" className="mb-8 md:mb-12">
+      <Grid className="grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
         <CountStatCard
           title="Site aktive"
           count={activeSites.length}
@@ -350,13 +350,110 @@ export default function DashboardStats() {
         />
         <MoneyStatCard
           title="Orë të punuara këtë javë"
-          amount={`${dashboardStats.totalHoursThisWeek ?? dashboardStats.totalWorkHours ?? 0} orë`}
+          amount={`${(() => {
+            // Try API data first
+            const apiValue = dashboardStats.totalHoursThisWeek ?? dashboardStats.totalWorkHours ?? 0;
+            if (apiValue > 0) return apiValue + ' orë';
+            
+            // Fallback: calculate from structuredWorkHours for current week
+            const thisWeek = dashboardStats.thisWeek;
+            if (thisWeek && structuredWorkHours) {
+              let totalHours = 0;
+              Object.values(structuredWorkHours).forEach(empData => {
+                const weekData = empData[thisWeek] || {};
+                Object.values(weekData).forEach(dayData => {
+                  if (dayData?.hours) {
+                    totalHours += parseFloat(dayData.hours);
+                  }
+                });
+              });
+              if (totalHours > 0) return totalHours + ' orë';
+            }
+            
+            // Final fallback: show total of all work hours
+            if (structuredWorkHours) {
+              let totalHours = 0;
+              Object.values(structuredWorkHours).forEach(empData => {
+                Object.values(empData).forEach(weekData => {
+                  Object.values(weekData).forEach(dayData => {
+                    if (dayData?.hours) {
+                      totalHours += parseFloat(dayData.hours);
+                    }
+                  });
+                });
+              });
+              return totalHours + ' orë';
+            }
+            
+            return '0 orë';
+          })()}`}
           color="purple"
         />
         <MoneyStatCard
           title="Total Bruto"
-          amount={`£${Number(dashboardStats.totalGrossThisWeek ?? dashboardStats.totalPaid ?? 0).toFixed(2)}`}
+          amount={`£${(() => {
+            // Try API data first, then fallback to direct calculation
+            const apiValue = Number(dashboardStats.totalGrossThisWeek ?? dashboardStats.totalPaid ?? 0);
+            if (apiValue > 0) return apiValue.toFixed(2);
+            
+            // Fallback: calculate from allPayments for current week
+            const thisWeek = dashboardStats.thisWeek;
+            if (thisWeek && allPayments) {
+              const weekPayments = allPayments.filter(p => p.weekLabel === thisWeek && p.isPaid === true);
+              const total = weekPayments.reduce((sum, p) => sum + parseFloat(p.grossAmount || 0), 0);
+              if (total > 0) return total.toFixed(2);
+            }
+            
+            // Final fallback: show total of all paid payments
+            if (allPayments) {
+              const total = allPayments.filter(p => p.isPaid === true)
+                .reduce((sum, p) => sum + parseFloat(p.grossAmount || 0), 0);
+              return total.toFixed(2);
+            }
+            
+            return '0.00';
+          })()}`}
           color="amber"
+        />
+      </Grid>
+      
+      {/* Additional stats row */}
+      <Grid className="grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6">
+        <MoneyStatCard
+          title="Total Pagesa (Të Gjitha)"
+          amount={`£${(() => {
+            // Calculate total from all paid payments
+            const totalPaid = allPayments?.filter(p => p.isPaid === true)
+              ?.reduce((sum, p) => sum + parseFloat(p.grossAmount || 0), 0) || 0;
+            return Number(totalPaid).toFixed(2);
+          })()}`}
+          color="green"
+        />
+        <MoneyStatCard
+          title="Pagesa Këtë Javë"
+          amount={`£${(() => {
+            // Calculate from current week payments
+            const thisWeek = dashboardStats.thisWeek;
+            const weekPayments = allPayments?.filter(p => p.weekLabel === thisWeek && p.isPaid === true) || [];
+            const total = weekPayments.reduce((sum, p) => sum + parseFloat(p.grossAmount || 0), 0);
+            return Number(total).toFixed(2);
+          })()}`}
+          color="blue"
+        />
+        <MoneyStatCard
+          title="Orë Totale (Të Gjitha)"
+          amount={`${(() => {
+            // Calculate total hours from all work hours
+            const totalHours = Object.values(structuredWorkHours || {}).reduce((total, empData) => {
+              return total + Object.values(empData).reduce((empTotal, weekData) => {
+                return empTotal + Object.values(weekData).reduce((weekTotal, dayData) => {
+                  return weekTotal + parseFloat(dayData?.hours || 0);
+                }, 0);
+              }, 0);
+            }, 0);
+            return totalHours;
+          })()} orë`}
+          color="indigo"
         />
       </Grid>
       
@@ -471,40 +568,103 @@ export default function DashboardStats() {
         {dashboardStats.thisWeek && (
           <p className="text-sm text-gray-600 mb-4">Javë: {dashboardStats.thisWeek}</p>
         )}
-        {dashboardStats.top5Employees && dashboardStats.top5Employees.length > 0 ? (
-          <ul className="space-y-3 text-gray-800">
-            {dashboardStats.top5Employees.map((e, i) => {
-              const amount = e.grossAmount ?? e.amount ?? 0;
-              const photoSrc = e.photo
-                ? e.photo.startsWith('data:image')
-                  ? e.photo
-                  : e.photo
-                : '/placeholder.png';
-              return (
-                <li key={e.id} className="flex items-center gap-6 bg-blue-50 p-5 rounded-2xl shadow-md border border-blue-200">
-                  <div className="relative w-14 h-14">
-                    <img src={photoSrc} alt="foto" className="w-full h-full rounded-full object-cover border-2 border-blue-300 shadow" />
-                    <span className="absolute -top-2 -left-2 bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">{i + 1}</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-lg">
-                      {e.name}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {e.isPaid ? '✅ E paguar' : '⏳ E papaguar'}
-                    </p>
-                  </div>
-                  <div className="text-blue-700 font-extrabold text-xl">£{Number(amount).toFixed(2)}</div>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-gray-500 italic">Nuk ka pagesa të regjistruara për këtë javë</p>
-            <p className="text-xs text-gray-400 mt-2">Ju mund të shtoni pagesa përmes menysë "Pagesat"</p>
-          </div>
-        )}
+        {(() => {
+          // Try API data first
+          if (dashboardStats.top5Employees && dashboardStats.top5Employees.length > 0) {
+            return (
+              <ul className="space-y-3 text-gray-800">
+                {dashboardStats.top5Employees.map((e, i) => {
+                  const amount = e.grossAmount ?? e.amount ?? 0;
+                  const photoSrc = e.photo
+                    ? e.photo.startsWith('data:image')
+                      ? e.photo
+                      : e.photo
+                    : '/placeholder.png';
+                  return (
+                    <li key={e.id} className="flex items-center gap-6 bg-blue-50 p-5 rounded-2xl shadow-md border border-blue-200">
+                      <div className="relative w-14 h-14">
+                        <img src={photoSrc} alt="foto" className="w-full h-full rounded-full object-cover border-2 border-blue-300 shadow" />
+                        <span className="absolute -top-2 -left-2 bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">{i + 1}</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-lg">
+                          {e.name}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {e.isPaid ? '✅ E paguar' : '⏳ E papaguar'}
+                        </p>
+                      </div>
+                      <div className="text-blue-700 font-extrabold text-xl">£{Number(amount).toFixed(2)}</div>
+                    </li>
+                  );
+                })}
+              </ul>
+            );
+          }
+          
+          // Fallback: calculate from allPayments
+          if (allPayments && employees) {
+            const thisWeek = dashboardStats.thisWeek;
+            const weekPayments = allPayments.filter(p => 
+              (thisWeek ? p.weekLabel === thisWeek : true) && p.isPaid === true
+            );
+            
+            if (weekPayments.length > 0) {
+              const top5FromPayments = weekPayments
+                .sort((a, b) => parseFloat(b.grossAmount || 0) - parseFloat(a.grossAmount || 0))
+                .slice(0, 5)
+                .map(p => {
+                  const emp = employees.find(e => e.id === p.employeeId);
+                  return {
+                    id: p.employeeId,
+                    name: emp ? `${emp.firstName || emp.first_name} ${emp.lastName || emp.last_name}` : 'Unknown',
+                    grossAmount: parseFloat(p.grossAmount || 0),
+                    isPaid: p.isPaid,
+                    photo: emp?.photo || null
+                  };
+                });
+              
+              if (top5FromPayments.length > 0) {
+                return (
+                  <ul className="space-y-3 text-gray-800">
+                    {top5FromPayments.map((e, i) => {
+                      const photoSrc = e.photo
+                        ? e.photo.startsWith('data:image')
+                          ? e.photo
+                          : e.photo
+                        : '/placeholder.png';
+                      return (
+                        <li key={e.id} className="flex items-center gap-6 bg-blue-50 p-5 rounded-2xl shadow-md border border-blue-200">
+                          <div className="relative w-14 h-14">
+                            <img src={photoSrc} alt="foto" className="w-full h-full rounded-full object-cover border-2 border-blue-300 shadow" />
+                            <span className="absolute -top-2 -left-2 bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">{i + 1}</span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-bold text-lg">
+                              {e.name}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {e.isPaid ? '✅ E paguar' : '⏳ E papaguar'}
+                            </p>
+                          </div>
+                          <div className="text-blue-700 font-extrabold text-xl">£{Number(e.grossAmount).toFixed(2)}</div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                );
+              }
+            }
+          }
+          
+          // Final fallback
+          return (
+            <div className="text-center py-8">
+              <p className="text-gray-500 italic">Nuk ka pagesa të regjistruara për këtë javë</p>
+              <p className="text-xs text-gray-400 mt-2">Ju mund të shtoni pagesa përmes menysë "Pagesat"</p>
+            </div>
+          );
+        })()}
       </div>
 
 

@@ -1342,6 +1342,15 @@ exports.getDashboardStats = async (req, res) => {
       totalEmployeesWithHours: [...new Set(workHoursThisWeekRes.rows.map(wh => wh.employee_id))].length
     };
 
+    // Debug logging
+    console.log('[DEBUG] Dashboard API Response:');
+    console.log('  thisWeek:', dashboardData.thisWeek);
+    console.log('  totalHoursThisWeek:', dashboardData.totalHoursThisWeek);
+    console.log('  totalGrossThisWeek:', dashboardData.totalGrossThisWeek);
+    console.log('  totalPaid:', dashboardData.totalPaid);
+    console.log('  top5Employees.length:', dashboardData.top5Employees.length);
+    console.log('  top5Employees sample:', dashboardData.top5Employees.slice(0, 2));
+
     res.json(dashboardData);
 
   } catch (err) {
