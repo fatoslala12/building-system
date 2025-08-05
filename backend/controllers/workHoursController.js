@@ -847,12 +847,31 @@ exports.getDashboardStats = async (req, res) => {
     const [monthStart, monthEnd] = getMonthRange();
     const [yearStart, yearEnd] = getYearRange();
 
+    console.log('[DEBUG] Current week label:', thisWeek);
+
     // --- PAGESAT ---
     // Javore
     const paidThisWeek = await client.query(
       `SELECT COALESCE(SUM(gross_amount),0) as total_gross FROM payments WHERE week_label = $1 AND is_paid = true`,
       [thisWeek]
     );
+    
+    // Check if we have data for current week, if not, get the most recent week with data
+    let weekToUse = thisWeek;
+    let hasCurrentWeekData = parseFloat(paidThisWeek.rows[0].total_gross || 0) > 0;
+    
+    if (!hasCurrentWeekData) {
+      console.log('[DEBUG] No data for current week, looking for most recent week with data');
+      const recentWeeksRes = await client.query(
+        `SELECT DISTINCT week_label FROM payments WHERE is_paid = true ORDER BY week_label DESC LIMIT 5`
+      );
+      
+      if (recentWeeksRes.rows.length > 0) {
+        weekToUse = recentWeeksRes.rows[0].week_label;
+        console.log('[DEBUG] Using most recent week with data:', weekToUse);
+      }
+    }
+    
     // Mujore
     const paidThisMonth = await client.query(
       `SELECT COALESCE(SUM(gross_amount),0) as total_gross FROM payments WHERE is_paid = true AND week_label >= $1 AND week_label <= $2`,
@@ -868,7 +887,7 @@ exports.getDashboardStats = async (req, res) => {
     // Javore
     const expensesThisWeek = await client.query(
       `SELECT COALESCE(SUM(gross),0) as total_expenses FROM expenses_invoices WHERE date >= $1 AND date <= $2`,
-      [thisWeek.split(' - ')[0], thisWeek.split(' - ')[1]]
+      [weekToUse.split(' - ')[0], weekToUse.split(' - ')[1]]
     );
     // Mujore
     const expensesThisMonth = await client.query(
@@ -896,15 +915,15 @@ exports.getDashboardStats = async (req, res) => {
     const netBalanceYear = totalProfitYear - totalExpensesYear;
 
     // --- DATA E VJETER ---
-    // 1. Get paid payments for this week
+    // 1. Get paid payments for the week we're using
     const paidThisWeekRes = await client.query(`
       SELECT p.*, e.first_name, e.last_name, e.hourly_rate, e.label_type
       FROM payments p
       JOIN employees e ON p.employee_id = e.id
       WHERE p.week_label = $1 AND p.is_paid = true
-    `, [thisWeek]);
+    `, [weekToUse]);
     
-    // 2. Get all work hours for this week
+    // 2. Get all work hours for the week we're using
     const workHoursThisWeekRes = await client.query(`
       SELECT wh.*, e.first_name, e.last_name, e.hourly_rate, c.site_name
       FROM work_hours wh
@@ -912,16 +931,16 @@ exports.getDashboardStats = async (req, res) => {
       JOIN contracts c ON wh.contract_id = c.id
       WHERE wh.date >= $1 AND wh.date <= $2
       ORDER BY wh.employee_id, wh.date
-    `, [thisWeek.split(' - ')[0], thisWeek.split(' - ')[1]]);
+    `, [weekToUse.split(' - ')[0], weekToUse.split(' - ')[1]]);
     
-    // 3. Get all payments for this week (paid and unpaid)  
+    // 3. Get all payments for the week we're using (paid and unpaid)  
     const allPaymentsThisWeekRes = await client.query(`
       SELECT p.*, e.first_name, e.last_name, e.hourly_rate
       FROM payments p
       JOIN employees e ON p.employee_id = e.id
       WHERE p.week_label = $1
       ORDER BY p.gross_amount DESC
-    `, [thisWeek]);
+    `, [weekToUse]);
     
     // Calculate totals
     const totalPaid = paidThisWeekRes.rows.reduce((sum, p) => sum + parseFloat(p.gross_amount || 0), 0);
@@ -943,7 +962,7 @@ exports.getDashboardStats = async (req, res) => {
       WHERE p.week_label = $1 AND p.is_paid = true
       ORDER BY p.gross_amount DESC
       LIMIT 5
-    `, [thisWeek]);
+    `, [weekToUse]);
     const top5Employees = top5PaidRes.rows.map(p => ({
       id: p.employee_id,
       name: `${p.first_name} ${p.last_name}`,
@@ -953,11 +972,33 @@ exports.getDashboardStats = async (req, res) => {
       role: p.role || ''
     }));
 
+    // If no top 5 employees for the week, get from all time
+    if (top5Employees.length === 0) {
+      console.log('[DEBUG] No top 5 employees for week, getting from all time');
+      const top5AllTimeRes = await client.query(`
+        SELECT p.employee_id, e.first_name, e.last_name, e.photo, u.role, p.gross_amount, p.is_paid
+        FROM payments p
+        JOIN employees e ON p.employee_id = e.id
+        LEFT JOIN users u ON u.employee_id = e.id
+        WHERE p.is_paid = true
+        ORDER BY p.gross_amount DESC
+        LIMIT 5
+      `);
+      top5Employees.push(...top5AllTimeRes.rows.map(p => ({
+        id: p.employee_id,
+        name: `${p.first_name} ${p.last_name}`,
+        grossAmount: parseFloat(p.gross_amount || 0),
+        isPaid: p.is_paid,
+        photo: p.photo || null,
+        role: p.role || ''
+      })));
+    }
+
     // --- STATISTIKA TË DETAJUARA ---
     // Orët totale të punës (javore, mujore, vjetore)
     const totalHoursWeekRes = await client.query(
       `SELECT COALESCE(SUM(hours),0) as total_hours FROM work_hours WHERE date >= $1 AND date <= $2`,
-      [thisWeek.split(' - ')[0], thisWeek.split(' - ')[1]]
+      [weekToUse.split(' - ')[0], weekToUse.split(' - ')[1]]
     );
     const totalHoursMonthRes = await client.query(
       `SELECT COALESCE(SUM(hours),0) as total_hours FROM work_hours WHERE date >= $1 AND date <= $2`,
@@ -975,7 +1016,7 @@ exports.getDashboardStats = async (req, res) => {
     // Numri i punonjësve me orë të regjistruara në periudhë
     const employeesWithHoursWeekRes = await client.query(
       `SELECT COUNT(DISTINCT employee_id) as count FROM work_hours WHERE date >= $1 AND date <= $2`,
-      [thisWeek.split(' - ')[0], thisWeek.split(' - ')[1]]
+      [weekToUse.split(' - ')[0], weekToUse.split(' - ')[1]]
     );
     const employeesWithHoursMonthRes = await client.query(
       `SELECT COUNT(DISTINCT employee_id) as count FROM work_hours WHERE date >= $1 AND date <= $2`,
@@ -996,7 +1037,7 @@ exports.getDashboardStats = async (req, res) => {
     // Merr numrin e site-ve/kontratave me orë të regjistruara në periudhë
     const sitesWithHoursWeekRes = await client.query(
       `SELECT COUNT(DISTINCT site) as count FROM work_hours WHERE date >= $1 AND date <= $2`,
-      [thisWeek.split(' - ')[0], thisWeek.split(' - ')[1]]
+      [weekToUse.split(' - ')[0], weekToUse.split(' - ')[1]]
     );
     const sitesWithHoursMonthRes = await client.query(
       `SELECT COUNT(DISTINCT site) as count FROM work_hours WHERE date >= $1 AND date <= $2`,
@@ -1017,7 +1058,7 @@ exports.getDashboardStats = async (req, res) => {
     // 1. Punonjësit me pagesa të papaguara këtë javë
     const unpaidEmployeesRes = await client.query(
       `SELECT p.employee_id, e.first_name, e.last_name, p.gross_amount FROM payments p JOIN employees e ON p.employee_id = e.id WHERE p.week_label = $1 AND p.is_paid = false`,
-      [thisWeek]
+      [weekToUse]
     );
     const unpaidEmployees = unpaidEmployeesRes.rows.map(row => ({
       id: row.employee_id,
@@ -1029,7 +1070,7 @@ exports.getDashboardStats = async (req, res) => {
     const allEmployeesRes = await client.query(`SELECT id, first_name, last_name FROM employees`);
     const employeesWithHoursThisWeekRes = await client.query(
       `SELECT DISTINCT employee_id FROM work_hours WHERE date >= $1 AND date <= $2`,
-      [thisWeek.split(' - ')[0], thisWeek.split(' - ')[1]]
+      [weekToUse.split(' - ')[0], weekToUse.split(' - ')[1]]
     );
     const employeesWithHoursSet = new Set(employeesWithHoursThisWeekRes.rows.map(r => r.employee_id));
     const absentEmployees = allEmployeesRes.rows
@@ -1039,7 +1080,7 @@ exports.getDashboardStats = async (req, res) => {
     // 3. Top 5 punonjësit më produktivë këtë javë (më shumë orë)
     const top5ProductiveRes = await client.query(
       `SELECT wh.employee_id, e.first_name, e.last_name, SUM(wh.hours) as total_hours FROM work_hours wh JOIN employees e ON wh.employee_id = e.id WHERE wh.date >= $1 AND wh.date <= $2 GROUP BY wh.employee_id, e.first_name, e.last_name ORDER BY total_hours DESC LIMIT 5`,
-      [thisWeek.split(' - ')[0], thisWeek.split(' - ')[1]]
+      [weekToUse.split(' - ')[0], weekToUse.split(' - ')[1]]
     );
     const top5ProductiveEmployees = top5ProductiveRes.rows.map(row => ({
       id: row.employee_id,
@@ -1050,7 +1091,7 @@ exports.getDashboardStats = async (req, res) => {
     // 4. Top 5 site më aktive këtë javë (më shumë orë)
     const top5SitesRes = await client.query(
       `SELECT site, SUM(hours) as total_hours FROM work_hours WHERE date >= $1 AND date <= $2 GROUP BY site ORDER BY total_hours DESC LIMIT 5`,
-      [thisWeek.split(' - ')[0], thisWeek.split(' - ')[1]]
+      [weekToUse.split(' - ')[0], weekToUse.split(' - ')[1]]
     );
     const top5Sites = top5SitesRes.rows.map(row => ({
       site: row.site,
@@ -1231,9 +1272,11 @@ exports.getDashboardStats = async (req, res) => {
     });
 
     const dashboardData = {
-      thisWeek: thisWeek,
-      totalHoursThisWeek,
-      totalGrossThisWeek,
+      thisWeek: weekToUse, // Use the week we actually have data for
+      totalHoursThisWeek: workHoursThisWeekRes.rows.reduce((sum, wh) => sum + parseFloat(wh.hours || 0), 0),
+      totalGrossThisWeek: totalGrossThisWeek,
+      totalPaid: totalPaid, // Add this for frontend compatibility
+      totalWorkHours: workHoursThisWeekRes.rows.reduce((sum, wh) => sum + parseFloat(wh.hours || 0), 0),
       totals: {
         weekly: {
           totalPaid: totalPaidWeek,
@@ -1300,7 +1343,6 @@ exports.getDashboardStats = async (req, res) => {
       },
       workHoursBysite: Object.entries(siteHours).map(([site, hours]) => ({ site, hours })),
       top5Employees: top5Employees,
-      totalWorkHours: workHoursThisWeekRes.rows.reduce((sum, wh) => sum + parseFloat(wh.hours || 0), 0),
       paidEmployeesCount: paidThisWeekRes.rows.length,
       totalEmployeesWithHours: [...new Set(workHoursThisWeekRes.rows.map(wh => wh.employee_id))].length
     };

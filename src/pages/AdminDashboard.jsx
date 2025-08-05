@@ -359,6 +359,12 @@ export default function DashboardStats() {
           color="amber"
         />
       </Grid>
+      
+      {dashboardStats.thisWeek && (
+        <div className="text-center mb-4">
+          <p className="text-sm text-gray-600">Të dhënat për javën: <span className="font-semibold">{dashboardStats.thisWeek}</span></p>
+        </div>
+      )}
 
       {/* Detyrat - më të dukshme */}
       <div className="bg-gradient-to-r from-yellow-50 via-white to-green-50 p-4 md:p-8 rounded-xl md:rounded-2xl shadow-xl col-span-full border border-yellow-200">
@@ -398,6 +404,9 @@ export default function DashboardStats() {
         <h3 className="text-lg md:text-2xl font-bold mb-4 flex items-center gap-2">📊 Ora të punuara këtë javë sipas site-ve ({dashboardStats.thisWeek})</h3>
         <div className="mb-4 text-sm md:text-lg font-semibold text-gray-700">
           Total orë të punuara: <span className="text-blue-600">{dashboardStats.totalWorkHours}</span> orë
+          {dashboardStats.thisWeek && (
+            <span className="text-xs text-gray-500 ml-2">(Javë: {dashboardStats.thisWeek})</span>
+          )}
         </div>
         {dashboardStats.workHoursBysite && dashboardStats.workHoursBysite.length > 0 ? (
           <ResponsiveContainer width="100%" height={350}>
@@ -410,7 +419,10 @@ export default function DashboardStats() {
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-gray-500 italic text-center py-8">Nuk ka orë pune të regjistruara për këtë javë</p>
+          <div className="text-center py-8">
+            <p className="text-gray-500 italic">Nuk ka orë pune të regjistruara për këtë javë</p>
+            <p className="text-xs text-gray-400 mt-2">Ju mund të shtoni orë pune përmes menysë "Orët e punës"</p>
+          </div>
         )}
       </div>
 
@@ -456,6 +468,9 @@ export default function DashboardStats() {
       {/* Top 5 më të paguar */}
       <div className="bg-white p-8 rounded-2xl shadow-md col-span-full">
         <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">🏅 Top 5 punonjësit më të paguar këtë javë</h3>
+        {dashboardStats.thisWeek && (
+          <p className="text-sm text-gray-600 mb-4">Javë: {dashboardStats.thisWeek}</p>
+        )}
         {dashboardStats.top5Employees && dashboardStats.top5Employees.length > 0 ? (
           <ul className="space-y-3 text-gray-800">
             {dashboardStats.top5Employees.map((e, i) => {
@@ -485,7 +500,10 @@ export default function DashboardStats() {
             })}
           </ul>
         ) : (
-          <p className="text-gray-500 italic text-center py-8">Nuk ka pagesa të regjistruara për këtë javë</p>
+          <div className="text-center py-8">
+            <p className="text-gray-500 italic">Nuk ka pagesa të regjistruara për këtë javë</p>
+            <p className="text-xs text-gray-400 mt-2">Ju mund të shtoni pagesa përmes menysë "Pagesat"</p>
+          </div>
         )}
       </div>
 
