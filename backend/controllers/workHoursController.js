@@ -1262,14 +1262,9 @@ exports.getDashboardStats = async (req, res) => {
     // Llogarit total orë dhe total bruto për këtë javë nga work_hours
     const workHoursRows = workHoursThisWeekRes.rows;
     const totalHoursThisWeek = workHoursRows.reduce((sum, wh) => sum + parseFloat(wh.hours || 0), 0);
-    // Për çdo punonjës, llogarit (orë * rate)
-    let totalGrossThisWeek = 0;
-    const empRateMap = {};
-    workHoursRows.forEach(wh => {
-      const rate = parseFloat(wh.hourly_rate || 0);
-      const hours = parseFloat(wh.hours || 0);
-      totalGrossThisWeek += rate * hours;
-    });
+    
+    // Total bruto duhet të jetë nga pagesat e paguara, jo nga orët e punës
+    const totalGrossThisWeek = paidThisWeekRes.rows.reduce((sum, p) => sum + parseFloat(p.gross_amount || 0), 0);
 
     const dashboardData = {
       thisWeek: weekToUse, // Use the week we actually have data for
