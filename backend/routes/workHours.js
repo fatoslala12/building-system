@@ -28,6 +28,9 @@ router.post('/paid-status', verifyToken, requireRole('admin'), controller.setPai
 router.post('/update-payment-status', verifyToken, requireRole('admin'), controller.updatePaymentStatus);
 router.post('/bulk-update', verifyToken, requireRole('manager'), controller.bulkUpdateWorkHours);
 router.get('/dashboard-stats', verifyToken, controller.getDashboardStats);
+
+// Test endpoint without authentication
+router.get('/dashboard-stats-test', controller.getDashboardStats);
 router.post('/notes', verifyToken, controller.saveWeekNote);
 router.get('/notes/:employeeId', verifyToken, controller.getWeekNotes);
 
