@@ -66,6 +66,8 @@ export default function DashboardStats() {
           console.log('[DEBUG] Dashboard API success:', dashboardData);
           console.log('[DEBUG] Dashboard totalPaid:', dashboardData?.totalPaid);
           console.log('[DEBUG] Dashboard top5Employees:', dashboardData?.top5Employees);
+          console.log('[DEBUG] Dashboard totalHoursThisWeek:', dashboardData?.totalHoursThisWeek);
+          console.log('[DEBUG] Dashboard totalGrossThisWeek:', dashboardData?.totalGrossThisWeek);
         } catch (dashboardError) {
           console.log('[DEBUG] Dashboard API failed, using fallback:', dashboardError.message);
           console.error('[DEBUG] Dashboard API error details:', dashboardError);
@@ -334,6 +336,23 @@ export default function DashboardStats() {
         </div>
       </div>
 
+      {/* Debug section - temporary */}
+      <div className="bg-yellow-100 p-4 mb-4 rounded-lg">
+        <h3 className="font-bold text-yellow-800">🔍 Debug Info:</h3>
+        <div className="text-sm text-yellow-700">
+          <p>Dashboard Stats: {JSON.stringify({
+            totalHoursThisWeek: dashboardStats.totalHoursThisWeek,
+            totalGrossThisWeek: dashboardStats.totalGrossThisWeek,
+            totalPaid: dashboardStats.totalPaid,
+            thisWeek: dashboardStats.thisWeek,
+            top5EmployeesCount: dashboardStats.top5Employees?.length || 0
+          })}</p>
+          <p>All Payments Count: {allPayments?.length || 0}</p>
+          <p>Structured Work Hours Keys: {Object.keys(structuredWorkHours || {}).length}</p>
+          <p>Employees Count: {employees?.length || 0}</p>
+        </div>
+      </div>
+
       {/* Statistika kryesore */}
       <Grid className="grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
         <CountStatCard
@@ -353,10 +372,13 @@ export default function DashboardStats() {
           amount={`${(() => {
             // Try API data first
             const apiValue = dashboardStats.totalHoursThisWeek ?? dashboardStats.totalWorkHours ?? 0;
+            console.log('[DEBUG] Work Hours - API value:', apiValue);
             if (apiValue > 0) return apiValue + ' orë';
             
             // Fallback: calculate from structuredWorkHours for current week
             const thisWeek = dashboardStats.thisWeek;
+            console.log('[DEBUG] Work Hours - thisWeek:', thisWeek);
+            console.log('[DEBUG] Work Hours - structuredWorkHours keys:', Object.keys(structuredWorkHours || {}));
             if (thisWeek && structuredWorkHours) {
               let totalHours = 0;
               Object.values(structuredWorkHours).forEach(empData => {
@@ -367,6 +389,7 @@ export default function DashboardStats() {
                   }
                 });
               });
+              console.log('[DEBUG] Work Hours - week total:', totalHours);
               if (totalHours > 0) return totalHours + ' orë';
             }
             
@@ -382,6 +405,7 @@ export default function DashboardStats() {
                   });
                 });
               });
+              console.log('[DEBUG] Work Hours - all total:', totalHours);
               return totalHours + ' orë';
             }
             
@@ -394,13 +418,18 @@ export default function DashboardStats() {
           amount={`£${(() => {
             // Try API data first, then fallback to direct calculation
             const apiValue = Number(dashboardStats.totalGrossThisWeek ?? dashboardStats.totalPaid ?? 0);
+            console.log('[DEBUG] Total Bruto - API value:', apiValue);
             if (apiValue > 0) return apiValue.toFixed(2);
             
             // Fallback: calculate from allPayments for current week
             const thisWeek = dashboardStats.thisWeek;
+            console.log('[DEBUG] Total Bruto - thisWeek:', thisWeek);
+            console.log('[DEBUG] Total Bruto - allPayments length:', allPayments?.length);
             if (thisWeek && allPayments) {
               const weekPayments = allPayments.filter(p => p.weekLabel === thisWeek && p.isPaid === true);
+              console.log('[DEBUG] Total Bruto - weekPayments length:', weekPayments.length);
               const total = weekPayments.reduce((sum, p) => sum + parseFloat(p.grossAmount || 0), 0);
+              console.log('[DEBUG] Total Bruto - week total:', total);
               if (total > 0) return total.toFixed(2);
             }
             
@@ -408,6 +437,7 @@ export default function DashboardStats() {
             if (allPayments) {
               const total = allPayments.filter(p => p.isPaid === true)
                 .reduce((sum, p) => sum + parseFloat(p.grossAmount || 0), 0);
+              console.log('[DEBUG] Total Bruto - all payments total:', total);
               return total.toFixed(2);
             }
             
