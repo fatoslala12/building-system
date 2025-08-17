@@ -57,9 +57,36 @@ export default function AdminDashboard() {
   const [allExpenses, setAllExpenses] = useState([]);
   const [structuredWorkHours, setStructuredWorkHours] = useState({});
   const [allPayments, setAllPayments] = useState([]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
+
+  // Handle window resize for mobile responsiveness
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Helper function for mobile-responsive chart margins
+  const getChartMargins = () => ({
+    left: isMobile ? 30 : 50,
+    right: isMobile ? 20 : 50,
+    top: 20,
+    bottom: 20
+  });
+
+  // Helper function for mobile-responsive chart dimensions
+  const getChartDimensions = () => ({
+    height: isMobile ? 300 : 450,
+    barSize: isMobile ? 24 : 32,
+    fontSize: isMobile ? 12 : 14,
+    yAxisWidth: isMobile ? 120 : 200
+  });
 
   // useEffect për të marrë të dhënat dhe llogaritë dashboard stats
   useEffect(() => {
@@ -344,6 +371,36 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-2 md:px-4 py-4 md:py-8 lg:py-10 space-y-4 md:space-y-8 lg:space-y-12 bg-gradient-to-br from-blue-50 via-white to-purple-50 min-h-screen">
+      <style jsx>{`
+        @media (max-width: 767px) {
+          .recharts-tooltip-wrapper {
+            font-size: 12px !important;
+          }
+          .recharts-legend-wrapper {
+            font-size: 12px !important;
+          }
+          .recharts-label {
+            font-size: 12px !important;
+          }
+          .recharts-bar-rectangle {
+            cursor: pointer;
+          }
+          .recharts-pie-sector {
+            cursor: pointer;
+          }
+          .recharts-tooltip {
+            pointer-events: auto !important;
+            touch-action: manipulation;
+          }
+          .mobile-chart-container {
+            padding: 1rem !important;
+            margin: 0.5rem 0;
+          }
+          .mobile-chart-container .recharts-responsive-container {
+            min-height: 300px;
+          }
+        }
+      `}</style>
       {/* HEADER MODERN */}
       <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl md:rounded-2xl shadow-lg px-4 md:px-10 py-4 md:py-6 mb-6 md:mb-8 border-b-2 border-blue-200 animate-fade-in w-full">
         <div className="flex-shrink-0 bg-blue-100 rounded-xl p-2 md:p-3 shadow-sm">
@@ -422,7 +479,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Grafik për site */}
-      <div className="bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full">
+      <div className={`bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full overflow-hidden ${isMobile ? 'mobile-chart-container' : ''}`}>
         <h3 className="text-lg md:text-2xl font-bold mb-4 flex items-center gap-2">
             📊 Ora të punuara këtë javë sipas site-ve
           </h3>
@@ -430,13 +487,13 @@ export default function AdminDashboard() {
           Total orë të punuara: <span className="text-blue-600">{dashboardStats.totalWorkHours}</span> orë
         </div>
         {dashboardStats.workHoursBysite && dashboardStats.workHoursBysite.length > 0 ? (
-          <ResponsiveContainer width="100%" height={450}>
-            <BarChart data={dashboardStats.workHoursBysite} layout="vertical" margin={{ left: 50 }}>
+          <ResponsiveContainer width="100%" height={getChartDimensions().height}>
+            <BarChart data={dashboardStats.workHoursBysite} layout="vertical" margin={getChartMargins()}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" label={{ value: "Orë", position: "insideBottomRight", offset: -5 }} />
-              <YAxis type="category" dataKey="site" width={200} tick={{ fontSize: 18, fontWeight: 'bold', fill: '#a21caf' }} />
+              <XAxis type="number" label={{ value: "Orë", position: "insideBottomRight", offset: -5 }} tick={{ fontSize: getChartDimensions().fontSize }} />
+              <YAxis type="category" dataKey="site" width={getChartDimensions().yAxisWidth} tick={{ fontSize: isMobile ? 14 : 18, fontWeight: 'bold', fill: '#a21caf' }} />
               <Tooltip formatter={v => [v, "Orë"]} />
-              <Bar dataKey="hours" radius={[0, 6, 6, 0]} barSize={32}>
+              <Bar dataKey="hours" radius={[0, 6, 6, 0]} barSize={getChartDimensions().barSize}>
                 {dashboardStats.workHoursBysite.map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                 ))}
@@ -449,10 +506,10 @@ export default function AdminDashboard() {
       </div>
 
       {/* Grafik për progresin e kontratave aktive */}
-      <div className="bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full">
-        <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">📈 Progresi i kontratave aktive (%)</h3>
+      <div className={`bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full overflow-hidden ${isMobile ? 'mobile-chart-container' : ''}`}>
+        <h3 className="text-lg md:text-2xl font-bold mb-4 flex items-center gap-2">📈 Progresi i kontratave aktive (%)</h3>
         {contracts.filter(c => c.status === "Ne progres" || c.status === "Pezulluar").length > 0 ? (
-          <ResponsiveContainer width="100%" height={450}>
+          <ResponsiveContainer width="100%" height={getChartDimensions().height}>
             <BarChart
               data={contracts.filter(c => c.status === "Ne progres" || c.status === "Pezulluar").map(c => {
                 const start = c.startDate ? new Date(c.startDate) : (c.start_date ? new Date(c.start_date) : null);
@@ -469,13 +526,13 @@ export default function AdminDashboard() {
                 };
               })}
               layout="vertical"
-              margin={{ left: 50 }}
+              margin={getChartMargins()}
             >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" domain={[0, 100]} label={{ value: "%", position: "insideBottomRight", offset: -5 }} tickFormatter={v => `${v}%`} />
-              <YAxis type="category" dataKey="name" width={200} tick={{ fontSize: 18, fontWeight: 'bold', fill: '#a21caf' }} />
+              <XAxis type="number" domain={[0, 100]} label={{ value: "%", position: "insideBottomRight", offset: -5 }} tickFormatter={v => `${v}%`} tick={{ fontSize: getChartDimensions().fontSize }} />
+              <YAxis type="category" dataKey="name" width={getChartDimensions().yAxisWidth} tick={{ fontSize: isMobile ? 14 : 18, fontWeight: 'bold', fill: '#a21caf' }} />
               <Tooltip formatter={v => [`${v}%`, "Progresi"]} />
-              <Bar dataKey="progress" radius={[0, 6, 6, 0]} barSize={30}>
+              <Bar dataKey="progress" radius={[0, 6, 6, 0]} barSize={getChartDimensions().barSize}>
                 {contracts.filter(c => c.status === "Ne progres" || c.status === "Pezulluar").map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                 ))}
@@ -566,28 +623,28 @@ export default function AdminDashboard() {
       
 
       {/* Grafik për shpenzimet sipas site-ve */}
-      <div className="bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full">
+      <div className={`bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full overflow-hidden ${isMobile ? 'mobile-chart-container' : ''}`}>
         <h3 className="text-lg md:text-2xl font-bold mb-4 flex items-center gap-2">💸 Shpenzimet (expenses_invoice.gross) + Orët e Punës (work_hours.hours × rate) sipas Site-ve</h3>
         <ShpenzimePerSiteChart allExpenses={allExpenses} contracts={contracts} structuredWorkHours={structuredWorkHours} allPayments={allPayments} />
       </div>
 
       {/* Grafik për statusin e kontratave */}
-      <div className="bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full">
+      <div className={`bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full overflow-hidden ${isMobile ? 'mobile-chart-container' : ''}`}>
         <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">📊 Statusi i kontratave</h3>
         <StatusiKontrataveChart contracts={contracts} />
       </div>
 
       {/* Grafik për pagesat javore */}
-      <div className="bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full">
-        <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">💸 Pagesa Javore për stafin</h3>
+      <div className={`bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full overflow-hidden ${isMobile ? 'mobile-chart-container' : ''}`}>
+        <h3 className="text-lg md:text-2xl font-bold mb-4 flex items-center gap-2">💸 Pagesa Javore për stafin</h3>
         {weeklyProfitData.filter(w => w.totalPaid > 0).length > 0 ? (
-          <ResponsiveContainer width="100%" height={450}>
-            <BarChart data={weeklyProfitData.filter(w => w.totalPaid > 0)} margin={{ left: 50 }}>
+          <ResponsiveContainer width="100%" height={getChartDimensions().height}>
+            <BarChart data={weeklyProfitData.filter(w => w.totalPaid > 0)} margin={getChartMargins()}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="week" tick={{ fontSize: 12, fill: '#6366f1', angle: -30, textAnchor: 'end' }} interval={0} height={80} />
-              <YAxis label={{ value: "Pagesa totale (£)", angle: -90, position: "insideLeft", offset: 0 }} tick={{ fontSize: 14, fill: '#6366f1' }} />
+              <XAxis dataKey="week" tick={{ fontSize: isMobile ? 10 : 12, fill: '#6366f1', angle: isMobile ? -45 : -30, textAnchor: 'end' }} interval={0} height={isMobile ? 60 : 80} />
+              <YAxis label={{ value: "Pagesa totale (£)", angle: -90, position: "insideLeft", offset: 0 }} tick={{ fontSize: isMobile ? 12 : 14, fill: '#6366f1' }} />
               <Tooltip formatter={v => [`£${Number(v).toFixed(2)}`, "Pagesa"]} />
-              <Bar dataKey="totalPaid" radius={[6, 6, 0, 0]} barSize={32}>
+              <Bar dataKey="totalPaid" radius={[6, 6, 0, 0]} barSize={getChartDimensions().barSize}>
                 {weeklyProfitData.filter(w => w.totalPaid > 0).map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                 ))}
@@ -671,6 +728,7 @@ export default function AdminDashboard() {
 }
 
 function VonesaFaturashChart() {
+  // Chart for invoice payment status
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -724,14 +782,14 @@ function VonesaFaturashChart() {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={400}>
+    <ResponsiveContainer width="100%" height={isMobile ? 300 : 400}>
       <PieChart>
         <Pie
           data={data}
           cx="50%"
           cy="50%"
-          outerRadius={140}
-          innerRadius={70}
+          outerRadius={isMobile ? 100 : 140}
+          innerRadius={isMobile ? 50 : 70}
           dataKey="value"
           label={({ name, value, percent }) => `${name}`}
           labelLine={true}
@@ -745,7 +803,7 @@ function VonesaFaturashChart() {
             background: '#fffbe9', 
             border: '1px solid #fbbf24', 
             borderRadius: 12, 
-            fontSize: 16, 
+            fontSize: isMobile ? 14 : 16, 
             color: '#78350f' 
           }}
           formatter={(value, name) => [value, name]}
@@ -756,6 +814,7 @@ function VonesaFaturashChart() {
 }
 
 function StatusiShpenzimeveChart() {
+  // Chart for expenses payment status
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -810,14 +869,14 @@ function StatusiShpenzimeveChart() {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={400}>
+    <ResponsiveContainer width="100%" height={isMobile ? 300 : 400}>
       <PieChart>
         <Pie
           data={data}
           cx="50%"
           cy="50%"
-          outerRadius={140}
-          innerRadius={70}
+          outerRadius={isMobile ? 100 : 140}
+          innerRadius={isMobile ? 50 : 70}
           dataKey="value"
           label={({ name, value, percent }) => `${name}`}
           labelLine={true}
@@ -831,7 +890,7 @@ function StatusiShpenzimeveChart() {
             background: '#fffbe9', 
             border: '1px solid #fbbf24', 
             borderRadius: 12, 
-            fontSize: 16, 
+            fontSize: isMobile ? 14 : 16, 
             color: '#78350f' 
           }}
           formatter={(value, name) => [value, name]}
@@ -952,13 +1011,13 @@ function ShpenzimePerSiteChart({ allExpenses, contracts, structuredWorkHours, al
         </div>
       </div>
       
-      <ResponsiveContainer width="100%" height={450}>
-        <BarChart data={data} layout="vertical" margin={{ left: 50, right: 50, top: 20, bottom: 20 }} barCategoryGap={18}>
+      <ResponsiveContainer width="100%" height={isMobile ? 350 : 450}>
+        <BarChart data={data} layout="vertical" margin={{ left: isMobile ? 30 : 50, right: isMobile ? 20 : 50, top: 20, bottom: 20 }} barCategoryGap={isMobile ? 12 : 18}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis type="number" label={{ value: "Shuma totale (£)", position: "insideBottomRight", offset: -5 }} tick={{ fontSize: 14 }} />
-          <YAxis type="category" dataKey="site" width={220} tick={{ fontSize: 16, fontWeight: 'bold', fill: '#0284c7' }} />
+          <XAxis type="number" label={{ value: "Shuma totale (£)", position: "insideBottomRight", offset: -5 }} tick={{ fontSize: isMobile ? 12 : 14 }} />
+          <YAxis type="category" dataKey="site" width={isMobile ? 120 : 220} tick={{ fontSize: isMobile ? 14 : 16, fontWeight: 'bold', fill: '#0284c7' }} />
           <Tooltip 
-            contentStyle={{ background: '#fffbe9', border: '1px solid #fbbf24', borderRadius: 12, fontSize: 16, color: '#78350f' }} 
+            contentStyle={{ background: '#fffbe9', border: '1px solid #fbbf24', borderRadius: 12, fontSize: isMobile ? 14 : 16, color: '#78350f' }} 
             formatter={(v, n) => [`£${Number(v).toFixed(2)}`, n === 'total' ? 'Totali' : n]} 
           />
           <Legend />
@@ -1020,14 +1079,14 @@ function StatusiKontrataveChart({ contracts }) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={350}>
+    <ResponsiveContainer width="100%" height={isMobile ? 300 : 350}>
       <PieChart>
         <Pie
           data={data}
           cx="50%"
           cy="50%"
-          outerRadius={120}
-          innerRadius={60}
+          outerRadius={isMobile ? 100 : 120}
+          innerRadius={isMobile ? 50 : 60}
           dataKey="value"
           label={({ name, value, percent }) => `${name}: ${value} (${Number(percent * 100).toFixed(0)}%)`}
           labelLine={true}
@@ -1041,7 +1100,7 @@ function StatusiKontrataveChart({ contracts }) {
             background: '#fffbe9', 
             border: '1px solid #fbbf24', 
             borderRadius: 12, 
-            fontSize: 16, 
+            fontSize: isMobile ? 14 : 16, 
             color: '#78350f' 
           }}
           formatter={(value, name) => [value, name]}
