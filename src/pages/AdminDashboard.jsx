@@ -11,11 +11,27 @@ import { CountStatCard, MoneyStatCard } from "../components/ui/StatCard";
 import { StatusBadge, PaymentBadge } from "../components/ui/Badge";
 import EmptyState, { NoTasksEmpty } from "../components/ui/EmptyState";
 
-// Global color palette for charts
-const CHART_COLORS = ["#a5b4fc", "#fbcfe8", "#fef08a", "#bbf7d0", "#bae6fd", "#fca5a5", "#fdba74", "#ddd6fe"];
+// Global color palette for charts - MODERN BLUE & PURPLE THEME
+const CHART_COLORS = [
+  "#dbeafe", // blue-200 - Light blue (primary)
+  "#e9d5ff", // purple-200 - Light purple (secondary)
+  "#bfdbfe", // blue-300 - Medium light blue
+  "#ddd6fe", // purple-300 - Medium light purple
+  "#93c5fd", // blue-400 - Medium blue
+  "#c4b5fd", // purple-400 - Medium purple
+  "#60a5fa", // blue-500 - Blue (accent)
+  "#a78bfa"  // purple-500 - Purple (accent)
+];
 
-// Stronger colors for status charts (better readability)
-const STATUS_CHART_COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
+// Stronger colors for status charts (better readability) - MODERN THEME
+const STATUS_CHART_COLORS = [
+  "#3b82f6", // blue-500 - Active/Positive
+  "#ef4444", // red-500 - Cancelled/Error
+  "#10b981", // emerald-500 - Completed/Success
+  "#f59e0b", // amber-500 - Suspended/Warning
+  "#8b5cf6", // purple-500 - Pending/Info
+  "#ec4899"  // pink-500 - Special/Highlight
+];
 
 // Funksion për të kthyer snake_case në camelCase për një objekt ose array
 function snakeToCamel(obj) {
@@ -57,9 +73,36 @@ export default function AdminDashboard() {
   const [allExpenses, setAllExpenses] = useState([]);
   const [structuredWorkHours, setStructuredWorkHours] = useState({});
   const [allPayments, setAllPayments] = useState([]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
+
+  // Handle window resize for mobile responsiveness
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Helper function for mobile-responsive chart margins
+  const getChartMargins = () => ({
+    left: isMobile ? 30 : 50,
+    right: isMobile ? 20 : 50,
+    top: 20,
+    bottom: 20
+  });
+
+  // Helper function for mobile-responsive chart dimensions
+  const getChartDimensions = () => ({
+    height: isMobile ? 300 : 450,
+    barSize: isMobile ? 24 : 32,
+    fontSize: isMobile ? 12 : 14,
+    yAxisWidth: isMobile ? 120 : 200
+  });
 
   // useEffect për të marrë të dhënat dhe llogaritë dashboard stats
   useEffect(() => {
@@ -344,17 +387,47 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-2 md:px-4 py-4 md:py-8 lg:py-10 space-y-4 md:space-y-8 lg:space-y-12 bg-gradient-to-br from-blue-50 via-white to-purple-50 min-h-screen">
+      <style jsx>{`
+        @media (max-width: 767px) {
+          .recharts-tooltip-wrapper {
+            font-size: 12px !important;
+          }
+          .recharts-legend-wrapper {
+            font-size: 12px !important;
+          }
+          .recharts-label {
+            font-size: 12px !important;
+          }
+          .recharts-bar-rectangle {
+            cursor: pointer;
+          }
+          .recharts-pie-sector {
+            cursor: pointer;
+          }
+          .recharts-tooltip {
+            pointer-events: auto !important;
+            touch-action: manipulation;
+          }
+          .mobile-chart-container {
+            padding: 1rem !important;
+            margin: 0.5rem 0;
+          }
+          .mobile-chart-container .recharts-responsive-container {
+            min-height: 300px;
+          }
+        }
+      `}</style>
       {/* HEADER MODERN */}
       <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl md:rounded-2xl shadow-lg px-4 md:px-10 py-4 md:py-6 mb-6 md:mb-8 border-b-2 border-blue-200 animate-fade-in w-full">
         <div className="flex-shrink-0 bg-blue-100 rounded-xl p-2 md:p-3 shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#7c3aed" className="w-8 h-8 md:w-12 md:h-12">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#3b82f6" className="w-8 h-8 md:w-12 md:h-12">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3.75 7.5h16.5M4.5 21h15a.75.75 0 00.75-.75V7.5a.75.75 0 00-.75-.75h-15a.75.75 0 00-.75.75v12.75c0 .414.336.75.75.75z" />
           </svg>
         </div>
         <div className="text-center md:text-left">
          
           <div className="text-lg md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-purple-700 tracking-tight mb-1 drop-shadow">Paneli i Administrimit</div>
-          <div className="text-sm md:text-lg font-medium text-purple-700">Statistika, detyra, pagesa dhe më shumë</div>
+          <div className="text-sm md:text-lg font-medium text-blue-600">Statistika, detyra, pagesa dhe më shumë</div>
         </div>
       </div>
 
@@ -389,7 +462,7 @@ export default function AdminDashboard() {
       </Grid>
 
       {/* Detyrat - më të dukshme */}
-      <div className="bg-gradient-to-r from-yellow-50 via-white to-green-50 p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-xl col-span-full border border-yellow-200">
+      <div className="bg-gradient-to-r from-blue-50/60 via-white to-purple-50/60 p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-xl col-span-full border border-blue-200/60">
         <h3 className="text-lg md:text-2xl font-bold mb-4 flex items-center gap-2">📋 Detyrat</h3>
         <div className="mb-4 flex flex-col sm:flex-row gap-2 md:gap-4 items-start sm:items-center">
           <label className="font-medium text-sm md:text-base">Filtro:</label>
@@ -407,11 +480,11 @@ export default function AdminDashboard() {
         {filteredTasks.length > 0 ? (
           <ul className="space-y-3">
             {filteredTasks.map((t, idx) => (
-              <li key={t.id || idx} className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 bg-white rounded-xl p-3 md:p-4 shadow border border-blue-100">
+              <li key={t.id || idx} className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 bg-white rounded-xl p-3 md:p-4 shadow border border-blue-200/60">
                 <StatusBadge status={t.status === 'completed' ? 'completed' : 'ongoing'} />
                 <span className="font-semibold flex-1 text-sm md:text-lg">{t.description || t.title || ''}</span>
-                <span className="text-sm md:text-lg text-blue-700 font-bold">{t.site_name || t.siteName || ''}</span>
-                <span className="text-sm md:text-lg text-purple-700 font-bold">Afati: {t.due_date || t.dueDate ? new Date(t.due_date || t.dueDate).toLocaleDateString() : 'Pa afat'}</span>
+                <span className="text-sm md:text-lg text-blue-600 font-bold">{t.site_name || t.siteName || ''}</span>
+                <span className="text-sm md:text-lg text-blue-600 font-bold">Afati: {t.due_date || t.dueDate ? new Date(t.due_date || t.dueDate).toLocaleDateString() : 'Pa afat'}</span>
                 <span className="text-xs text-gray-500">Nga: {t.assigned_by || t.assignedBy || ''}</span>
               </li>
             ))}
@@ -422,21 +495,21 @@ export default function AdminDashboard() {
       </div>
 
       {/* Grafik për site */}
-      <div className="bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full">
+      <div className={`bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full overflow-hidden ${isMobile ? 'mobile-chart-container' : ''}`}>
         <h3 className="text-lg md:text-2xl font-bold mb-4 flex items-center gap-2">
             📊 Ora të punuara këtë javë sipas site-ve
           </h3>
         <div className="mb-4 text-sm md:text-lg font-semibold text-gray-700">
-          Total orë të punuara: <span className="text-blue-600">{dashboardStats.totalWorkHours}</span> orë
+          Total orë të punuara: <span className="text-blue-500">{dashboardStats.totalWorkHours}</span> orë
         </div>
         {dashboardStats.workHoursBysite && dashboardStats.workHoursBysite.length > 0 ? (
-          <ResponsiveContainer width="100%" height={450}>
-            <BarChart data={dashboardStats.workHoursBysite} layout="vertical" margin={{ left: 50 }}>
+          <ResponsiveContainer width="100%" height={getChartDimensions().height}>
+            <BarChart data={dashboardStats.workHoursBysite} layout="vertical" margin={getChartMargins()}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" label={{ value: "Orë", position: "insideBottomRight", offset: -5 }} />
-              <YAxis type="category" dataKey="site" width={200} tick={{ fontSize: 18, fontWeight: 'bold', fill: '#a21caf' }} />
+              <XAxis type="number" label={{ value: "Orë", position: "insideBottomRight", offset: -5 }} tick={{ fontSize: getChartDimensions().fontSize }} />
+              <YAxis type="category" dataKey="site" width={getChartDimensions().yAxisWidth} tick={{ fontSize: isMobile ? 14 : 18, fontWeight: 'bold', fill: '#3b82f6' }} />
               <Tooltip formatter={v => [v, "Orë"]} />
-              <Bar dataKey="hours" radius={[0, 6, 6, 0]} barSize={32}>
+              <Bar dataKey="hours" radius={[0, 6, 6, 0]} barSize={getChartDimensions().barSize}>
                 {dashboardStats.workHoursBysite.map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                 ))}
@@ -449,10 +522,10 @@ export default function AdminDashboard() {
       </div>
 
       {/* Grafik për progresin e kontratave aktive */}
-      <div className="bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full">
-        <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">📈 Progresi i kontratave aktive (%)</h3>
+      <div className={`bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full overflow-hidden ${isMobile ? 'mobile-chart-container' : ''}`}>
+        <h3 className="text-lg md:text-2xl font-bold mb-4 flex items-center gap-2">📈 Progresi i kontratave aktive (%)</h3>
         {contracts.filter(c => c.status === "Ne progres" || c.status === "Pezulluar").length > 0 ? (
-          <ResponsiveContainer width="100%" height={450}>
+          <ResponsiveContainer width="100%" height={getChartDimensions().height}>
             <BarChart
               data={contracts.filter(c => c.status === "Ne progres" || c.status === "Pezulluar").map(c => {
                 const start = c.startDate ? new Date(c.startDate) : (c.start_date ? new Date(c.start_date) : null);
@@ -469,13 +542,13 @@ export default function AdminDashboard() {
                 };
               })}
               layout="vertical"
-              margin={{ left: 50 }}
+              margin={getChartMargins()}
             >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" domain={[0, 100]} label={{ value: "%", position: "insideBottomRight", offset: -5 }} tickFormatter={v => `${v}%`} />
-              <YAxis type="category" dataKey="name" width={200} tick={{ fontSize: 18, fontWeight: 'bold', fill: '#a21caf' }} />
+              <XAxis type="number" domain={[0, 100]} label={{ value: "%", position: "insideBottomRight", offset: -5 }} tickFormatter={v => `${v}%`} tick={{ fontSize: getChartDimensions().fontSize }} />
+              <YAxis type="category" dataKey="name" width={getChartDimensions().yAxisWidth} tick={{ fontSize: isMobile ? 14 : 18, fontWeight: 'bold', fill: '#3b82f6' }} />
               <Tooltip formatter={v => [`${v}%`, "Progresi"]} />
-              <Bar dataKey="progress" radius={[0, 6, 6, 0]} barSize={30}>
+              <Bar dataKey="progress" radius={[0, 6, 6, 0]} barSize={getChartDimensions().barSize}>
                 {contracts.filter(c => c.status === "Ne progres" || c.status === "Pezulluar").map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                 ))}
@@ -516,13 +589,13 @@ export default function AdminDashboard() {
                 : '/placeholder.png';
               
               return (
-                <li key={e.id} className="flex items-center gap-6 bg-blue-50 p-5 rounded-2xl shadow-md border border-blue-200">
+                <li key={e.id} className="flex items-center gap-6 bg-blue-50/80 p-5 rounded-2xl shadow-md border border-blue-200/60">
                   <div className="relative w-14 h-14">
                     {employeeData?.photo ? (
                       <img 
                         src={photoSrc} 
                         alt={displayName} 
-                        className="w-full h-full rounded-full object-cover border-2 border-blue-300 shadow"
+                        className="w-full h-full rounded-full object-cover border-2 border-blue-400 shadow"
                         onError={(e) => {
                           e.target.style.display = 'none';
                           e.target.nextSibling.style.display = 'flex';
@@ -530,11 +603,11 @@ export default function AdminDashboard() {
                       />
                     ) : null}
                     <div 
-                      className={`w-full h-full rounded-full border-2 border-blue-300 shadow flex items-center justify-center text-blue-600 font-bold text-lg ${employeeData?.photo ? 'hidden' : 'flex'}`}
-                      style={{
-                        background: '#e0e7ef',
-                        display: employeeData?.photo ? 'none' : 'flex'
-                      }}
+                      className={`w-full h-full rounded-full border-2 border-blue-400 shadow flex items-center justify-center text-blue-600 font-bold text-lg ${employeeData?.photo ? 'hidden' : 'flex'}`}
+                                              style={{
+                          background: '#dbeafe',
+                          display: employeeData?.photo ? 'none' : 'flex'
+                        }}
                     >
                       {displayName
                         .split(" ")
@@ -542,7 +615,7 @@ export default function AdminDashboard() {
                         .join("")
                         .toUpperCase()}
                     </div>
-                    <span className="absolute -top-2 -left-2 bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">{i + 1}</span>
+                    <span className="absolute -top-2 -left-2 bg-blue-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">{i + 1}</span>
                   </div>
                   <div className="flex-1">
                     <p className="font-bold text-lg">
@@ -552,7 +625,7 @@ export default function AdminDashboard() {
                       {e.isPaid ? '✅ E paguar' : '⏳ E papaguar'}
                     </p>
                   </div>
-                  <div className="text-blue-700 font-extrabold text-xl">£{Number(amount).toFixed(2)}</div>
+                  <div className="text-blue-600 font-extrabold text-xl">£{Number(amount).toFixed(2)}</div>
                 </li>
               );
             })}
@@ -566,28 +639,28 @@ export default function AdminDashboard() {
       
 
       {/* Grafik për shpenzimet sipas site-ve */}
-      <div className="bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full">
+      <div className={`bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full overflow-hidden ${isMobile ? 'mobile-chart-container' : ''}`}>
         <h3 className="text-lg md:text-2xl font-bold mb-4 flex items-center gap-2">💸 Shpenzimet (expenses_invoice.gross) + Orët e Punës (work_hours.hours × rate) sipas Site-ve</h3>
         <ShpenzimePerSiteChart allExpenses={allExpenses} contracts={contracts} structuredWorkHours={structuredWorkHours} allPayments={allPayments} />
       </div>
 
       {/* Grafik për statusin e kontratave */}
-      <div className="bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full">
+      <div className={`bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full overflow-hidden ${isMobile ? 'mobile-chart-container' : ''}`}>
         <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">📊 Statusi i kontratave</h3>
         <StatusiKontrataveChart contracts={contracts} />
       </div>
 
       {/* Grafik për pagesat javore */}
-      <div className="bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full">
-        <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">💸 Pagesa Javore për stafin</h3>
+      <div className={`bg-white p-3 md:p-6 lg:p-8 rounded-xl md:rounded-2xl shadow-md col-span-full overflow-hidden ${isMobile ? 'mobile-chart-container' : ''}`}>
+        <h3 className="text-lg md:text-2xl font-bold mb-4 flex items-center gap-2">💸 Pagesa Javore për stafin</h3>
         {weeklyProfitData.filter(w => w.totalPaid > 0).length > 0 ? (
-          <ResponsiveContainer width="100%" height={450}>
-            <BarChart data={weeklyProfitData.filter(w => w.totalPaid > 0)} margin={{ left: 50 }}>
+          <ResponsiveContainer width="100%" height={getChartDimensions().height}>
+            <BarChart data={weeklyProfitData.filter(w => w.totalPaid > 0)} margin={getChartMargins()}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="week" tick={{ fontSize: 12, fill: '#6366f1', angle: -30, textAnchor: 'end' }} interval={0} height={80} />
-              <YAxis label={{ value: "Pagesa totale (£)", angle: -90, position: "insideLeft", offset: 0 }} tick={{ fontSize: 14, fill: '#6366f1' }} />
+              <XAxis dataKey="week" tick={{ fontSize: isMobile ? 10 : 12, fill: '#3b82f6', angle: isMobile ? -45 : -30, textAnchor: 'end' }} interval={0} height={isMobile ? 60 : 80} />
+              <YAxis label={{ value: "Pagesa totale (£)", angle: -90, position: "insideLeft", offset: 0 }} tick={{ fontSize: isMobile ? 12 : 14, fill: '#3b82f6' }} />
               <Tooltip formatter={v => [`£${Number(v).toFixed(2)}`, "Pagesa"]} />
-              <Bar dataKey="totalPaid" radius={[6, 6, 0, 0]} barSize={32}>
+              <Bar dataKey="totalPaid" radius={[6, 6, 0, 0]} barSize={getChartDimensions().barSize}>
                 {weeklyProfitData.filter(w => w.totalPaid > 0).map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                 ))}
@@ -619,12 +692,12 @@ export default function AdminDashboard() {
         ) : (
           <ul className="space-y-2 text-red-700 text-base">
             {unpaid.map((item, idx) => (
-              <li key={idx} className="bg-red-50 p-3 rounded shadow-sm border border-red-200 flex items-center gap-4">
+              <li key={idx} className="bg-red-50/80 p-3 rounded shadow-sm border border-red-200/60 flex items-center gap-4">
                 <a href={`/admin/contracts/${item.contractNumber}`} className="font-bold text-red-700 underline cursor-pointer">
                   🔴 Kontrata #{item.contractNumber || ''}
                 </a>
                 <span className="font-bold text-black">Nr. Fature: <b>{item.invoiceNumber || ''}</b></span>
-                <span className="font-bold text-blue-700 flex items-center gap-1">🏢 Site: {(() => {
+                <span className="font-bold text-blue-600 flex items-center gap-1">🏢 Site: {(() => {
                   let c = null;
                   if (item.contract_id && contracts.length) {
                     c = contracts.find(c => String(c.id) === String(item.contract_id));
@@ -649,11 +722,11 @@ export default function AdminDashboard() {
         ) : (
           <ul className="space-y-2 text-red-700 text-base">
             {unpaidExpenses.map((item, idx) => (
-              <li key={idx} className="bg-red-50 p-3 rounded shadow-sm border border-red-200 flex items-center gap-4">
+              <li key={idx} className="bg-red-50/80 p-3 rounded shadow-sm border border-red-200/60 flex items-center gap-4">
                 <span className="font-bold flex items-center gap-1">📅 {item.date ? new Date(item.date).toLocaleDateString() : ''}</span>
                 <span className="font-bold text-lg">{item.type || ''}</span>
                 <span className="font-bold text-lg flex items-center gap-1">💷 {item.gross !== undefined ? `£${Number(item.gross).toFixed(2)}` : ''}</span>
-                <span className="font-bold text-blue-700 flex items-center gap-1">
+                <span className="font-bold text-blue-600 flex items-center gap-1">
                   🏢 {(() => {
                     if (!item.contract_id || !contracts.length) return '';
                     const c = contracts.find(c => String(c.id) === String(item.contract_id));
@@ -671,6 +744,7 @@ export default function AdminDashboard() {
 }
 
 function VonesaFaturashChart() {
+  // Chart for invoice payment status
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -724,14 +798,14 @@ function VonesaFaturashChart() {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={400}>
+    <ResponsiveContainer width="100%" height={isMobile ? 300 : 400}>
       <PieChart>
         <Pie
           data={data}
           cx="50%"
           cy="50%"
-          outerRadius={140}
-          innerRadius={70}
+          outerRadius={isMobile ? 100 : 140}
+          innerRadius={isMobile ? 50 : 70}
           dataKey="value"
           label={({ name, value, percent }) => `${name}`}
           labelLine={true}
@@ -742,11 +816,11 @@ function VonesaFaturashChart() {
         </Pie>
         <Tooltip 
           contentStyle={{ 
-            background: '#fffbe9', 
-            border: '1px solid #fbbf24', 
+            background: '#dbeafe', 
+            border: '1px solid #3b82f6', 
             borderRadius: 12, 
-            fontSize: 16, 
-            color: '#78350f' 
+            fontSize: isMobile ? 14 : 16, 
+            color: '#1e40af' 
           }}
           formatter={(value, name) => [value, name]}
         />
@@ -756,6 +830,7 @@ function VonesaFaturashChart() {
 }
 
 function StatusiShpenzimeveChart() {
+  // Chart for expenses payment status
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -810,14 +885,14 @@ function StatusiShpenzimeveChart() {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={400}>
+    <ResponsiveContainer width="100%" height={isMobile ? 300 : 400}>
       <PieChart>
         <Pie
           data={data}
           cx="50%"
           cy="50%"
-          outerRadius={140}
-          innerRadius={70}
+          outerRadius={isMobile ? 100 : 140}
+          innerRadius={isMobile ? 50 : 70}
           dataKey="value"
           label={({ name, value, percent }) => `${name}`}
           labelLine={true}
@@ -828,11 +903,11 @@ function StatusiShpenzimeveChart() {
         </Pie>
         <Tooltip 
           contentStyle={{ 
-            background: '#fffbe9', 
-            border: '1px solid #fbbf24', 
+            background: '#dbeafe', 
+            border: '1px solid #3b82f6', 
             borderRadius: 12, 
-            fontSize: 16, 
-            color: '#78350f' 
+            fontSize: isMobile ? 14 : 16, 
+            color: '#1e40af' 
           }}
           formatter={(value, name) => [value, name]}
         />
@@ -943,22 +1018,22 @@ function ShpenzimePerSiteChart({ allExpenses, contracts, structuredWorkHours, al
   
   return (
     <div>
-      <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <h4 className="font-semibold text-blue-800 mb-2">📊 Shpjegim i llogaritjes:</h4>
-        <div className="text-sm text-blue-700 space-y-1">
+      <div className="mb-4 p-4 bg-blue-50/80 rounded-lg border border-blue-200/60">
+        <h4 className="font-semibold text-blue-700 mb-2">📊 Shpjegim i llogaritjes:</h4>
+        <div className="text-sm text-blue-600 space-y-1">
           <p><strong>Shpenzime:</strong> Shpenzimet nga tabela expenses_invoice - kolona [gross] sipas site-ve</p>
           <p><strong>Orët e Punës:</strong> Orët e punuara × rate nga tabela work_hours - kolona [hours] × kolona [rate]</p>
           <p><strong>Totali:</strong> Shpenzime + Orët e Punës</p>
         </div>
       </div>
       
-      <ResponsiveContainer width="100%" height={450}>
-        <BarChart data={data} layout="vertical" margin={{ left: 50, right: 50, top: 20, bottom: 20 }} barCategoryGap={18}>
+      <ResponsiveContainer width="100%" height={isMobile ? 350 : 450}>
+        <BarChart data={data} layout="vertical" margin={{ left: isMobile ? 30 : 50, right: isMobile ? 20 : 50, top: 20, bottom: 20 }} barCategoryGap={isMobile ? 12 : 18}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis type="number" label={{ value: "Shuma totale (£)", position: "insideBottomRight", offset: -5 }} tick={{ fontSize: 14 }} />
-          <YAxis type="category" dataKey="site" width={220} tick={{ fontSize: 16, fontWeight: 'bold', fill: '#0284c7' }} />
+          <XAxis type="number" label={{ value: "Shuma totale (£)", position: "insideBottomRight", offset: -5 }} tick={{ fontSize: isMobile ? 12 : 14 }} />
+          <YAxis type="category" dataKey="site" width={isMobile ? 120 : 220} tick={{ fontSize: isMobile ? 14 : 16, fontWeight: 'bold', fill: '#3b82f6' }} />
           <Tooltip 
-            contentStyle={{ background: '#fffbe9', border: '1px solid #fbbf24', borderRadius: 12, fontSize: 16, color: '#78350f' }} 
+            contentStyle={{ background: '#dbeafe', border: '1px solid #3b82f6', borderRadius: 12, fontSize: isMobile ? 14 : 16, color: '#1e40af' }} 
             formatter={(v, n) => [`£${Number(v).toFixed(2)}`, n === 'total' ? 'Totali' : n]} 
           />
           <Legend />
@@ -1020,14 +1095,14 @@ function StatusiKontrataveChart({ contracts }) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={350}>
+    <ResponsiveContainer width="100%" height={isMobile ? 300 : 350}>
       <PieChart>
         <Pie
           data={data}
           cx="50%"
           cy="50%"
-          outerRadius={120}
-          innerRadius={60}
+          outerRadius={isMobile ? 100 : 120}
+          innerRadius={isMobile ? 50 : 60}
           dataKey="value"
           label={({ name, value, percent }) => `${name}: ${value} (${Number(percent * 100).toFixed(0)}%)`}
           labelLine={true}
@@ -1038,11 +1113,11 @@ function StatusiKontrataveChart({ contracts }) {
         </Pie>
         <Tooltip 
           contentStyle={{ 
-            background: '#fffbe9', 
-            border: '1px solid #fbbf24', 
+            background: '#dbeafe', 
+            border: '1px solid #3b82f6', 
             borderRadius: 12, 
-            fontSize: 16, 
-            color: '#78350f' 
+            fontSize: isMobile ? 14 : 16, 
+            color: '#1e40af' 
           }}
           formatter={(value, name) => [value, name]}
         />
