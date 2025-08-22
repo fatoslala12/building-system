@@ -96,7 +96,7 @@ export default function MyProfile() {
     // Përdor endpoint të ndryshëm për manager vs user
     const endpoint = user?.role === "manager" 
       ? `https://building-system.onrender.com/api/tasks/manager/${user.employee_id}`
-      : `https://building-system.onrender.com/api/tasks?assignedTo=${user.employee_id}&status=completed`;
+      : `https://building-system.onrender.com/api/tasks`; // Merr të gjitha detyrat dhe filtriro në frontend
     
     console.log('Fetching completed tasks for user:', user.employee_id, 'from endpoint:', endpoint);
     
@@ -105,29 +105,23 @@ export default function MyProfile() {
     })
       .then(res => {
         const allTasks = res.data || [];
-        console.log('All completed tasks received:', allTasks.length);
+        console.log('All tasks received:', allTasks.length);
+        console.log('Sample task structure:', allTasks[0]);
         
-        // Additional filtering to ensure only tasks assigned to current user
+        // Simplified filtering to ensure only tasks assigned to current user
         let tasksData = allTasks;
         if (user?.role === 'manager') {
           tasksData = allTasks.filter(task => task.status === 'completed' && (
-            String(task.assigned_to ?? task.assignedTo) === String(user.employee_id)
+            String(task.assigned_to) === String(user.employee_id)
           ));
         } else if (user?.role === 'user') {
-          // Double-check filtering for user role
+          // For user role: filter by assigned_to AND status completed
           tasksData = allTasks.filter(task => {
-            const assignedId = task.assigned_to ?? task.assignedTo ?? task.assignedToId;
-            const assignedEmail = (task.assigned_email ?? task.assignedEmail ?? task.assignedToEmail ?? '').toLowerCase();
-            const myEmail = (user?.email || '').toLowerCase();
+            const isAssignedToMe = String(task.assigned_to) === String(user.employee_id);
+            const isCompleted = task.status === 'completed';
             
-            const isAssignedToMe = (
-              (assignedId != null && String(assignedId) === String(user.employee_id)) ||
-              (assignedEmail && assignedEmail === myEmail) ||
-              (typeof task.assignedTo === 'string' && task.assignedTo.toLowerCase() === myEmail)
-            );
-            
-            console.log('Completed task:', task.id, 'assigned_to:', assignedId, 'isAssignedToMe:', isAssignedToMe);
-            return isAssignedToMe;
+            console.log('Task:', task.id, 'assigned_to:', task.assigned_to, 'status:', task.status, 'isAssignedToMe:', isAssignedToMe, 'isCompleted:', isCompleted);
+            return isAssignedToMe && isCompleted;
           });
         }
         

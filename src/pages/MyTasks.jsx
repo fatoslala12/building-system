@@ -43,7 +43,7 @@ export default function MyTasks() {
     // Përdor endpoint të ndryshëm për manager vs user
     const endpoint = user?.role === "manager" 
       ? `https://building-system.onrender.com/api/tasks/manager/${user.employee_id}`
-      : `https://building-system.onrender.com/api/tasks?assignedTo=${user.employee_id}`;
+      : `https://building-system.onrender.com/api/tasks`; // Merr të gjitha detyrat dhe filtriro në frontend
     
     console.log('Fetching tasks for user:', user.employee_id, 'from endpoint:', endpoint);
     
@@ -54,22 +54,16 @@ export default function MyTasks() {
       .then((res) => {
         const allTasks = res.data || [];
         console.log('All tasks received:', allTasks.length);
+        console.log('Sample task structure:', allTasks[0]);
         
-        // Additional filtering for user role to ensure only assigned tasks
+        // Simplified filtering for user role - focus on assigned_to field
         let filteredTasks = allTasks;
         if (user?.role === "user") {
           filteredTasks = allTasks.filter(task => {
-            const assignedId = task.assigned_to ?? task.assignedTo ?? task.assignedToId;
-            const assignedEmail = (task.assigned_email ?? task.assignedEmail ?? task.assignedToEmail ?? '').toLowerCase();
-            const myEmail = (user?.email || '').toLowerCase();
+            // Check if task is assigned to current user by employee ID
+            const isAssignedToMe = String(task.assigned_to) === String(user.employee_id);
             
-            const isAssignedToMe = (
-              (assignedId != null && String(assignedId) === String(user.employee_id)) ||
-              (assignedEmail && assignedEmail === myEmail) ||
-              (typeof task.assignedTo === 'string' && task.assignedTo.toLowerCase() === myEmail)
-            );
-            
-            console.log('Task:', task.id, 'assigned_to:', assignedId, 'assignedTo:', task.assignedTo, 'isAssignedToMe:', isAssignedToMe);
+            console.log('Task:', task.id, 'assigned_to:', task.assigned_to, 'user.employee_id:', user.employee_id, 'isAssignedToMe:', isAssignedToMe);
             return isAssignedToMe;
           });
         }
