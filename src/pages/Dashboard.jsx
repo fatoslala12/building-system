@@ -175,7 +175,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [token] = useState(localStorage.getItem("token"));
 
-  // Basic debugging at component level
+  // Aggressive debugging - test if component is working
   console.log('=== DASHBOARD COMPONENT RENDER ===');
   console.log('User object:', user);
   console.log('User role:', user?.role);
@@ -183,6 +183,11 @@ export default function Dashboard() {
   console.log('Component state - hourData:', hourData);
   console.log('Component state - tasks:', tasks);
   console.log('Component state - payments:', payments);
+  
+  // Test alert to see if component is working
+  if (user?.role === "user") {
+    alert(`Dashboard is working! User: ${user.email}, Role: ${user.role}, Employee ID: ${user.employee_id}`);
+  }
 
   const currentWeekStart = getStartOfWeek();
   const currentWeekLabel = formatDateRange(currentWeekStart);
@@ -379,6 +384,11 @@ export default function Dashboard() {
 
   return (
     <div className="w-full max-w-none px-2 md:px-4 lg:px-8">
+      {/* TEST DIV - Remove this after testing */}
+      <div style={{background: 'red', color: 'white', padding: '20px', margin: '20px', fontSize: '24px'}}>
+        🚨 DASHBOARD IS RENDERING! User: {user?.email}, Role: {user?.role}, Employee ID: {user?.employee_id}
+      </div>
+      
       {/* Heqim titullin për admin */}
       {user.role !== "admin" && (
         <h1 className="text-xl md:text-2xl lg:text-3xl font-bold mb-4 px-2">Mirë se erdhe{userFullName ? `, ${userFullName}` : ""}</h1>
