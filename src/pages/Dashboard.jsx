@@ -183,11 +183,6 @@ export default function Dashboard() {
   console.log('Component state - hourData:', hourData);
   console.log('Component state - tasks:', tasks);
   console.log('Component state - payments:', payments);
-  
-  // Test alert to see if component is working
-  if (user?.role === "user") {
-    alert(`Dashboard is working! User: ${user.email}, Role: ${user.role}, Employee ID: ${user.employee_id}`);
-  }
 
   const currentWeekStart = getStartOfWeek();
   const currentWeekLabel = formatDateRange(currentWeekStart);
@@ -225,6 +220,12 @@ export default function Dashboard() {
 
   // Merr orët e punës për user-in nga backend
   useEffect(() => {
+    console.log('=== WORK HOURS useEffect TRIGGERED ===');
+    console.log('User exists:', !!user);
+    console.log('User role:', user?.role);
+    console.log('User employee_id:', user?.employee_id);
+    console.log('Employees length:', employees.length);
+    
     if (user?.role === "user" && user?.employee_id) {
       console.log('=== DASHBOARD DEBUG ===');
       console.log('User:', user);
@@ -244,6 +245,7 @@ export default function Dashboard() {
           setHourData({ [user.employee_id]: {} });
         });
     } else if (employees.length > 0) {
+      console.log('Fetching hours for all employees (manager/admin)');
       // Menaxher/admin: merr për të gjithë
       const fetchHours = async () => {
         const allData = {};
@@ -258,6 +260,8 @@ export default function Dashboard() {
         setHourData(allData);
       };
       fetchHours();
+    } else {
+      console.log('No user or employees available yet');
     }
   }, [user, employees]); // Removed currentWeekLabel dependency
 
@@ -284,6 +288,11 @@ export default function Dashboard() {
 
   // Merr pagesat nga backend për user-in
   useEffect(() => {
+    console.log('=== PAYMENTS useEffect TRIGGERED ===');
+    console.log('User exists:', !!user);
+    console.log('User role:', user?.role);
+    console.log('User employee_id:', user?.employee_id);
+    
     if (user?.role === "user" && user?.employee_id) {
       console.log('=== PAYMENTS DEBUG ===');
       console.log('Fetching payments for user:', user.employee_id);
@@ -299,6 +308,8 @@ export default function Dashboard() {
           console.error('Error details:', error.response?.data || error.message);
           setPayments([]);
         });
+    } else {
+      console.log('No user or not a user role, skipping payments fetch');
     }
   }, [user]);
 
@@ -384,11 +395,6 @@ export default function Dashboard() {
 
   return (
     <div className="w-full max-w-none px-2 md:px-4 lg:px-8">
-      {/* TEST DIV - Remove this after testing */}
-      <div style={{background: 'red', color: 'white', padding: '20px', margin: '20px', fontSize: '24px'}}>
-        🚨 DASHBOARD IS RENDERING! User: {user?.email}, Role: {user?.role}, Employee ID: {user?.employee_id}
-      </div>
-      
       {/* Heqim titullin për admin */}
       {user.role !== "admin" && (
         <h1 className="text-xl md:text-2xl lg:text-3xl font-bold mb-4 px-2">Mirë se erdhe{userFullName ? `, ${userFullName}` : ""}</h1>
