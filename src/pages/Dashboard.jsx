@@ -188,6 +188,19 @@ export default function Dashboard() {
     { label: formatDateRange(getStartOfWeek(-2)), start: getStartOfWeek(-2) }
   ];
 
+  // Helper: a task is assigned to current user
+  const isAssignedToMe = (task) => {
+    const assignedId = task.assigned_to ?? task.assignedTo ?? task.assignedToId;
+    const assignedEmail = (task.assigned_email ?? task.assignedEmail ?? task.assignedToEmail ?? '').toLowerCase();
+    const myEmail = (user?.email || '').toLowerCase();
+    return (
+      (assignedId != null && String(assignedId) === String(user?.employee_id)) ||
+      (assignedEmail && assignedEmail === myEmail) ||
+      // Backward compatibility: some records may store email in assignedTo
+      (typeof task.assignedTo === 'string' && task.assignedTo.toLowerCase() === myEmail)
+    );
+  };
+
   // Merr emër + mbiemër për user-in (mos shfaq email në asnjë rast)
   const userFullName = (user?.first_name && user?.last_name)
     ? `${user.first_name} ${user.last_name}`
@@ -228,13 +241,19 @@ export default function Dashboard() {
 
   // Merr detyrat nga backend
   useEffect(() => {
+    if (!user) return;
     if (user?.role === "manager") {
       // Për manager-in, përdor endpoint-in e managerit
       api.get(`/api/tasks/manager/${user.employee_id}`)
         .then(res => setTasks(res.data))
         .catch(() => setTasks([]));
+    } else if (user?.role === "user" && user?.employee_id) {
+      // Për user-in, merr vetëm detyrat e caktuara atij
+      api.get(`/api/tasks`, { params: { assignedTo: user.employee_id } })
+        .then(res => setTasks(res.data || []))
+        .catch(() => setTasks([]));
     } else {
-      // Për admin dhe user, përdor endpoint-in e përgjithshëm
+      // Për admin, përdor endpoint-in e përgjithshëm
       api.get("/api/tasks")
         .then(res => setTasks(res.data))
         .catch(() => setTasks([]));
@@ -371,7 +390,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-green-100 text-xs md:text-sm">Detyrat Aktive</p>
                   <p className="text-xl md:text-2xl lg:text-3xl font-bold">
-                    {tasks.filter(t => t.assignedTo === user.email && t.status === "ongoing").length}
+                    {tasks.filter(t => isAssignedToMe(t) && (t.status === "ongoing" || t.status === "in_progress" || t.status === "pending")).length}
                   </p>
                 </div>
                 <div className="text-2xl md:text-3xl lg:text-4xl">📋</div>
@@ -415,7 +434,7 @@ export default function Dashboard() {
                 Shiko të gjitha →
               </Link>
             </div>
-            {tasks.filter((t) => t.assignedTo === user.email).length === 0 ? (
+            {tasks.filter((t) => isAssignedToMe(t)).length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-6xl mb-4">🎉</div>
                 <p className="text-gray-500 text-lg">Nuk ke detyra aktive për momentin!</p>
@@ -424,7 +443,7 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-4">
                 {tasks
-                  .filter((t) => t.assignedTo === user.email)
+                  .filter((t) => isAssignedToMe(t))
                   .slice(0, 3)
                   .map((t) => (
                     <div
@@ -442,12 +461,12 @@ export default function Dashboard() {
                               <span>📍</span> {t.siteName}
                             </span>
                           )}
-                          {t.dueDate && (
-                            <span className={`flex items-center gap-1 ${new Date(t.dueDate) < new Date() ? 'text-red-600 font-semibold' : ''}`}>
+                          {(t.dueDate || t.due_date) && (
+                            <span className={`flex items-center gap-1 ${(new Date(t.dueDate || t.due_date) < new Date()) ? 'text-red-600 font-semibold' : ''}`}>
                               <span>⏰</span> 
-                              {new Date(t.dueDate) < new Date() 
+                              {(new Date(t.dueDate || t.due_date) < new Date()) 
                                 ? "Ka kaluar afati!" 
-                                : `Afat: ${new Date(t.dueDate).toLocaleDateString()}`
+                                : `Afat: ${new Date(t.dueDate || t.due_date).toLocaleDateString()}`
                               }
                             </span>
                           )}
@@ -872,42 +891,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Seksion për të gjitha javët e kaluara për user-in */}
-      {user.role === "user" && hourData[user.employee_id] && (
-        <section className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-          <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <span className="text-blue-600">📅</span>
-            Orët e Punës për të Gjitha Javët
-          </h3>
-          {Object.keys(hourData[user.employee_id]).length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-4xl mb-4">📆</div>
-              <p className="text-gray-500">Nuk ka të dhëna për javët e kaluara</p>
-            </div>
-          ) : (
-            Object.keys(hourData[user.employee_id]).sort().reverse().map(weekLabel => (
-              <div key={weekLabel} className="mb-4">
-                <button
-                  className="flex items-center gap-2 text-lg font-semibold text-blue-700 hover:underline focus:outline-none mb-2"
-                  onClick={() => toggleWeek(weekLabel)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <span>{expandedWeeks.includes(weekLabel) ? '▼' : '▶'}</span>
-                  Java: {weekLabel}
-                </button>
-                {expandedWeeks.includes(weekLabel) && userEmployee && (
-                  <WorkHoursTable
-                    employees={[userEmployee]}
-                    weekLabel={weekLabel}
-                    data={hourData}
-                    readOnly={true}
-                  />
-                )}
-              </div>
-            ))
-          )}
-        </section>
-      )}
+      {/* Seksioni i javëve të kaluara është hequr për përdoruesin */}
     </div>
   );
 }

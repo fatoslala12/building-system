@@ -102,10 +102,13 @@ export default function MyProfile() {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => {
-        // Për manager, filtriro vetëm detyrat e përfunduara
-        const tasksData = user?.role === "manager" 
-          ? (res.data || []).filter(task => task.status === 'completed')
-          : (res.data || []);
+        // Për manager, filtriro vetëm detyrat e përfunduara për punonjësit e tij – por në profil duam vetë-menaxherin
+        let tasksData = res.data || [];
+        if (user?.role === 'manager') {
+          tasksData = tasksData.filter(task => task.status === 'completed' && (
+            String(task.assigned_to ?? task.assignedTo) === String(user.employee_id)
+          ));
+        }
         setTasks(tasksData);
       })
       .catch(() => setTasks([]));
@@ -626,19 +629,21 @@ export default function MyProfile() {
             <div className="grid gap-3 md:gap-4">
               {tasks.slice(0, 10).map((task, index) => (
                 <div key={task.id || index} className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 md:p-6 shadow-lg border border-green-200">
-                  <h4 className="text-lg md:text-xl font-bold text-blue-800 mb-2">{task.title}</h4>
+                  <h4 className="text-lg md:text-xl font-bold text-blue-800 mb-2">{task.title || task.description}</h4>
                   <p className="text-gray-700 mb-3 text-sm md:text-base">{task.description}</p>
                   <div className="flex flex-wrap gap-2 md:gap-4 text-xs md:text-sm">
                     <span className="px-2 md:px-3 py-1 rounded-full text-xs font-bold border bg-green-100 text-green-700 border-green-200">
                       ✅ Përfunduar
                     </span>
-                    <span className="px-2 md:px-3 py-1 rounded-full text-xs font-bold border ${
-                      task.priority === 'high' ? 'text-red-600 bg-red-100 border-red-200' :
-                      task.priority === 'medium' ? 'text-yellow-600 bg-yellow-100 border-yellow-200' :
-                      'text-green-600 bg-green-100 border-green-200'
-                    }">
-                      {task.priority === 'high' ? '🔴 E lartë' : task.priority === 'medium' ? '🟡 Mesatare' : '🟢 E ulët'}
-                    </span>
+                    {task.priority && (
+                      <span className={`px-2 md:px-3 py-1 rounded-full text-xs font-bold border ${
+                        task.priority === 'high' ? 'text-red-600 bg-red-100 border-red-200' :
+                        task.priority === 'medium' ? 'text-yellow-600 bg-yellow-100 border-yellow-200' :
+                        'text-green-600 bg-green-100 border-green-200'
+                      }`}>
+                        {task.priority === 'high' ? '🔴 E lartë' : task.priority === 'medium' ? '🟡 Mesatare' : '🟢 E ulët'}
+                      </span>
+                    )}
                     {task.due_date && (
                       <span className="px-2 md:px-3 py-1 rounded-full text-xs font-bold border bg-blue-100 text-blue-700 border-blue-200">
                         📅 {new Date(task.due_date).toLocaleDateString()}
@@ -653,34 +658,38 @@ export default function MyProfile() {
           )}
         </div>
 
-        {/* Historiku i orëve të punës - Light Blue Theme */}
-        <div className="w-full bg-gradient-to-br from-blue-50 to-white rounded-xl md:rounded-2xl shadow-sm border border-blue-200 p-4 md:p-6 mb-6 md:mb-10">
-          <h3 className="text-lg md:text-xl font-bold text-blue-800 mb-4 flex items-center gap-2">📊 Historiku i Orëve të Punës</h3>
+        {/* Historiku i orëve të punës - modern UI */}
+        <div className="w-full bg-gradient-to-br from-blue-50 to-white rounded-2xl shadow-md border border-blue-200 p-4 md:p-6 mb-6 md:mb-10">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg md:text-xl font-bold text-blue-800 flex items-center gap-2">📊 Historiku i Orëve të Punës</h3>
+            <span className="text-xs md:text-sm text-blue-600">£{(hourly_rate || 0)}/orë</span>
+          </div>
           <div className="space-y-3 md:space-y-4">
-            {Object.entries(workHistory).map(([weekLabel, days]) => {
+            {Object.entries(workHistory).sort((a,b)=> new Date(b[0].split(' - ')[0]) - new Date(a[0].split(' - ')[0])).map(([weekLabel, days]) => {
               const totalHours = Object.values(days).reduce((total, val) => total + Number(val.hours || 0), 0);
               const totalPay = totalHours * (hourly_rate || 0);
               const isPaid = paidStatus[weekLabel];
               
               return (
-                <div key={weekLabel} className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-3 md:p-4 border border-blue-200 shadow-sm">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
-                    <div className="flex-1">
-                      <h4 className="font-bold text-blue-800 text-sm md:text-base">{weekLabel}</h4>
-                      <div className="flex flex-wrap gap-2 md:gap-4 mt-1 text-xs md:text-sm">
-                        <span className="text-blue-700">
-                          <strong>Orët:</strong> {totalHours}
-                        </span>
-                        <span className="text-blue-700">
-                          <strong>Paga:</strong> £{totalPay.toFixed(2)}
-                        </span>
-                        <span className={`px-2 md:px-3 py-1 rounded-full text-xs font-bold shadow-sm border ${isPaid ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
-                          {isPaid ? 'Paguar' : 'Pa paguar'}
-                        </span>
+                <div key={weekLabel} className="rounded-xl overflow-hidden border border-blue-200 bg-white">
+                  <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-blue-500 text-white flex items-center justify-center font-bold">{new Date(weekLabel.split(' - ')[0]).getDate()}</div>
+                      <div>
+                        <h4 className="font-semibold text-blue-800 text-sm md:text-base">{weekLabel}</h4>
+                        <div className="text-xs text-blue-700">{totalHours} orë</div>
                       </div>
                     </div>
-                    {/* Koment për këtë javë */}
-                    <div className="flex flex-col gap-1 ml-2 md:ml-4">
+                    <div className="flex items-center gap-3">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${isPaid ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>{isPaid ? 'Paguar' : 'Pa paguar'}</span>
+                      <div className="text-right">
+                        <div className="text-sm md:text-base font-bold text-blue-900">£{totalPay.toFixed(2)}</div>
+                        <div className="text-[11px] text-blue-600">{totalHours}h × £{(hourly_rate || 0)}</div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Koment për këtë javë */}
+                  <div className="px-4 py-3 flex flex-col gap-1">
                       <div className="flex gap-2">
                         <input
                           type="text"
@@ -702,7 +711,6 @@ export default function MyProfile() {
                       )}
                     </div>
                   </div>
-                </div>
               );
             })}
           </div>

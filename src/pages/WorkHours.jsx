@@ -741,16 +741,9 @@ export default function WorkHours() {
               // Filtrimi i javëve të kaluara: vetëm week labels në format date range, përjashto javën aktuale
               const pastWeeks = uniqueWeeks.filter(weekLabel => {
                 const isValidDateRange = /^\d{4}-\d{2}-\d{2} - \d{4}-\d{2}-\d{2}$/.test(weekLabel);
-                // Check if this week is not the current week by comparing dates
                 const isNotCurrentWeek = weekLabel !== currentWeekLabel;
-                // Additional check: if the week ends before today, it's definitely a past week
-                const weekEndDate = weekLabel.split(' - ')[1];
-                const today = new Date().toISOString().slice(0, 10);
-                const isPastWeek = weekEndDate < today;
-                console.log(`Week ${weekLabel}: isValidDateRange=${isValidDateRange}, isNotCurrentWeek=${isNotCurrentWeek}, isPastWeek=${isPastWeek}, weekEndDate=${weekEndDate}, today=${today}`);
                 return isValidDateRange && isNotCurrentWeek;
               });
-              // Rendit nga më e reja te më e vjetra
               pastWeeks.sort((a, b) => new Date(b.split(' - ')[0]) - new Date(a.split(' - ')[0]));
               return pastWeeks.map((weekLabel) => {
                 return (
@@ -797,6 +790,40 @@ export default function WorkHours() {
                   </div>
                 );
               });
+            })()}
+          </div>
+        )}
+
+        {/* Javët e kaluara - vetëm për USER: vetëm vetja */}
+        {isUser && employees.length === 1 && Object.keys(hourData).length > 0 && (
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-blue-500 rounded-lg text-white">📅</div>
+              <h3 className="text-lg font-bold text-blue-800">Javët e Kaluara</h3>
+            </div>
+            {(() => {
+              const empId = employees[0]?.id;
+              const weeks = Object.keys(hourData[empId] || {}).filter(w => w !== currentWeekLabel).sort((a,b)=> new Date(b.split(' - ')[0]) - new Date(a.split(' - ')[0]));
+              return weeks.map(weekLabel => (
+                <div key={weekLabel} className="bg-white rounded-xl border border-blue-100 shadow-sm overflow-hidden">
+                  <button onClick={() => toggleWeek(weekLabel)} className="w-full text-left px-4 py-3 bg-blue-50 hover:bg-blue-100 transition">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-blue-800">{weekLabel}</span>
+                      <span className="text-sm text-blue-600">{expandedWeeks.includes(weekLabel) ? 'Mbyll' : 'Hap'}</span>
+                    </div>
+                  </button>
+                  {expandedWeeks.includes(weekLabel) && (
+                    <div className="p-3">
+                      <WorkHoursTable
+                        employees={employees}
+                        weekLabel={weekLabel}
+                        data={hourData}
+                        readOnly={() => true}
+                      />
+                    </div>
+                  )}
+                </div>
+              ));
             })()}
           </div>
         )}
