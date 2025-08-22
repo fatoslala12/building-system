@@ -219,9 +219,16 @@ export default function Dashboard() {
   // Merr orët e punës për user-in nga backend
   useEffect(() => {
     if (user?.role === "user" && user?.employee_id) {
+      console.log('Fetching work hours for user:', user.employee_id);
       api.get(`/api/work-hours/${user.employee_id}`)
-        .then(res => setHourData({ [user.employee_id]: res.data || {} }))
-        .catch(() => setHourData({ [user.employee_id]: {} }));
+        .then(res => {
+          console.log('Work hours response:', res.data);
+          setHourData({ [user.employee_id]: res.data || {} });
+        })
+        .catch((error) => {
+          console.error('Error fetching work hours:', error);
+          setHourData({ [user.employee_id]: {} });
+        });
     } else if (employees.length > 0) {
       // Menaxher/admin: merr për të gjithë
       const fetchHours = async () => {
@@ -264,9 +271,16 @@ export default function Dashboard() {
   // Merr pagesat nga backend për user-in
   useEffect(() => {
     if (user?.role === "user" && user?.employee_id) {
+      console.log('Fetching payments for user:', user.employee_id);
       api.get(`/api/payments/${user.employee_id}`)
-        .then(res => setPayments(res.data || []))
-        .catch(() => setPayments([]));
+        .then(res => {
+          console.log('Payments response:', res.data);
+          setPayments(res.data || []);
+        })
+        .catch((error) => {
+          console.error('Error fetching payments:', error);
+          setPayments([]);
+        });
     }
   }, [user]);
 
@@ -382,12 +396,19 @@ export default function Dashboard() {
                   <p className="text-xl md:text-2xl lg:text-3xl font-bold">
                     {(() => {
                       const userHours = hourData[user.employee_id] || {};
-                      const currentWeek = Object.values(userHours).find(week => 
-                        Object.keys(week).some(day => week[day]?.hours > 0)
-                      ) || {};
-                      return Object.values(currentWeek).reduce((total, day) => 
+                      console.log('User hours data:', userHours);
+                      console.log('Current week label:', currentWeekLabel);
+                      
+                      // Look for current week specifically
+                      const currentWeekData = userHours[currentWeekLabel] || {};
+                      console.log('Current week data:', currentWeekData);
+                      
+                      const totalHours = Object.values(currentWeekData).reduce((total, day) => 
                         total + (Number(day?.hours) || 0), 0
                       );
+                      
+                      console.log('Total hours for current week:', totalHours);
+                      return totalHours;
                     })()} orë
                   </p>
                 </div>
@@ -414,10 +435,9 @@ export default function Dashboard() {
                   <p className="text-xl md:text-2xl lg:text-3xl font-bold">
                     £{(() => {
                       const userHours = hourData[user.employee_id] || {};
-                      const currentWeek = Object.values(userHours).find(week => 
-                        Object.keys(week).some(day => week[day]?.hours > 0)
-                      ) || {};
-                      const totalHours = Object.values(currentWeek).reduce((total, day) => 
+                      // Look for current week specifically
+                      const currentWeekData = userHours[currentWeekLabel] || {};
+                      const totalHours = Object.values(currentWeekData).reduce((total, day) => 
                         total + (Number(day?.hours) || 0), 0
                       );
                       const hourlyRate = employees.find(emp => emp.id === user.employee_id)?.hourly_rate || 0;
