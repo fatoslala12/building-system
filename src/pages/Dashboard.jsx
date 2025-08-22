@@ -501,48 +501,36 @@ export default function Dashboard() {
           <section className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
             <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
               <span className="text-indigo-600">📊</span>
-              Orët e Punës të Javëve të Fundit
+              Orët e Punës të Javës së Kaluar
             </h3>
             {(() => {
               const userHours = hourData[user.employee_id] || {};
-              const weeks = Object.keys(userHours).slice(-4); // 4 javët e fundit
-              const chartData = weeks.map(week => {
-                const weekData = userHours[week];
-                const totalHours = Object.values(weekData || {}).reduce((total, day) => 
-                  total + (Number(day?.hours) || 0), 0
-                );
-                return {
-                  week: week.split(' - ')[0], // Merr vetëm datën e fillimit
-                  hours: totalHours
-                };
-              }).filter(item => item.hours > 0);
-
-              if (chartData.length === 0) {
+              // Merr vetëm javën e kaluar (para javës aktuale)
+              const weekKeys = Object.keys(userHours).sort((a, b) => new Date(b.split(' - ')[0]) - new Date(a.split(' - ')[0]));
+              const previousWeek = weekKeys.find(week => week !== currentWeekLabel);
+              
+              if (!previousWeek) {
                 return (
                   <div className="text-center py-8">
                     <div className="text-4xl mb-4">📈</div>
-                    <p className="text-gray-500">Nuk ka të dhëna për orët e punës</p>
+                    <p className="text-gray-500">Nuk ka të dhëna për javën e kaluar</p>
                   </div>
                 );
               }
 
+              const weekData = userHours[previousWeek];
+              const totalHours = Object.values(weekData || {}).reduce((total, day) => 
+                total + (Number(day?.hours) || 0), 0
+              );
+
               return (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="week" 
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={(value) => new Date(value).toLocaleDateString('sq-AL', { month: 'short', day: 'numeric' })}
-                    />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip 
-                      formatter={(value) => [`${value} orë`, 'Orët']}
-                      labelFormatter={(label) => `Java: ${new Date(label).toLocaleDateString('sq-AL')}`}
-                    />
-                    <Bar dataKey="hours" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="text-center">
+                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
+                    <h4 className="text-lg font-semibold text-indigo-800 mb-2">{previousWeek}</h4>
+                    <div className="text-3xl font-bold text-indigo-600">{totalHours} orë</div>
+                    <p className="text-sm text-indigo-600 mt-1">Totali i javës së kaluar</p>
+                  </div>
+                </div>
               );
             })()}
           </section>
@@ -554,10 +542,15 @@ export default function Dashboard() {
               Pagesat e Fundit
             </h3>
             {(() => {
-              // Simuloj pagesat e fundit bazuar në orët e punës
+              // Merr pagesat aktuale nga backend për këtë punonjës
               const userHours = hourData[user.employee_id] || {};
               const hourlyRate = employees.find(emp => emp.id === user.employee_id)?.hourly_rate || 0;
-              const recentPayments = Object.keys(userHours).slice(-3).map(week => {
+              
+              // Merr javët e fundit (përjashto javën aktuale)
+              const weekKeys = Object.keys(userHours).sort((a, b) => new Date(b.split(' - ')[0]) - new Date(a.split(' - ')[0]));
+              const pastWeeks = weekKeys.filter(week => week !== currentWeekLabel).slice(0, 3);
+              
+              const recentPayments = pastWeeks.map(week => {
                 const weekData = userHours[week];
                 const totalHours = Object.values(weekData || {}).reduce((total, day) => 
                   total + (Number(day?.hours) || 0), 0
@@ -609,15 +602,6 @@ export default function Dashboard() {
                 </div>
               );
             })()}
-          </section>
-
-          {/* Ndryshimi i fjalëkalimit */}
-          <section className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-            <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-              <span className="text-purple-600">🔐</span>
-              Siguria e Llogarisë
-            </h3>
-            <ChangePassword />
           </section>
 
           {/* Butona të shpejtë për navigim */}

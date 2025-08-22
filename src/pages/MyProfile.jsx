@@ -658,61 +658,83 @@ export default function MyProfile() {
           )}
         </div>
 
-        {/* Historiku i orëve të punës - modern UI */}
+        {/* Historiku i orëve të punës - modern timeline UI */}
         <div className="w-full bg-gradient-to-br from-blue-50 to-white rounded-2xl shadow-md border border-blue-200 p-4 md:p-6 mb-6 md:mb-10">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg md:text-xl font-bold text-blue-800 flex items-center gap-2">📊 Historiku i Orëve të Punës</h3>
-            <span className="text-xs md:text-sm text-blue-600">£{(hourly_rate || 0)}/orë</span>
+            <span className="text-xs md:text-sm text-blue-600 bg-blue-100 px-3 py-1 rounded-full">£{(hourly_rate || 0)}/orë</span>
           </div>
-          <div className="space-y-3 md:space-y-4">
-            {Object.entries(workHistory).sort((a,b)=> new Date(b[0].split(' - ')[0]) - new Date(a[0].split(' - ')[0])).map(([weekLabel, days]) => {
-              const totalHours = Object.values(days).reduce((total, val) => total + Number(val.hours || 0), 0);
-              const totalPay = totalHours * (hourly_rate || 0);
-              const isPaid = paidStatus[weekLabel];
-              
-              return (
-                <div key={weekLabel} className="rounded-xl overflow-hidden border border-blue-200 bg-white">
-                  <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-blue-500 text-white flex items-center justify-center font-bold">{new Date(weekLabel.split(' - ')[0]).getDate()}</div>
-                      <div>
-                        <h4 className="font-semibold text-blue-800 text-sm md:text-base">{weekLabel}</h4>
-                        <div className="text-xs text-blue-700">{totalHours} orë</div>
+          
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-blue-400 to-blue-200"></div>
+            
+            <div className="space-y-6">
+              {Object.entries(workHistory).sort((a,b)=> new Date(b[0].split(' - ')[0]) - new Date(a[0].split(' - ')[0])).map(([weekLabel, days], index) => {
+                const totalHours = Object.values(days).reduce((total, val) => total + Number(val.hours || 0), 0);
+                const totalPay = totalHours * (hourly_rate || 0);
+                const isPaid = paidStatus[weekLabel];
+                
+                return (
+                  <div key={weekLabel} className="relative">
+                    {/* Timeline dot */}
+                    <div className="absolute left-3 w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow-lg transform -translate-x-1/2"></div>
+                    
+                    {/* Content card */}
+                    <div className="ml-8 bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-blue-500 text-white flex items-center justify-center font-bold text-sm">
+                            {new Date(weekLabel.split(' - ')[0]).getDate()}
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-blue-800 text-sm md:text-base">{weekLabel}</h4>
+                            <div className="text-xs text-blue-700 flex items-center gap-2">
+                              <span>⏰ {totalHours} orë</span>
+                              <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
+                              <span>💰 £{totalPay.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold border shadow-sm ${
+                            isPaid ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'
+                          }`}>
+                            {isPaid ? '✅ Paguar' : '⏳ Pa paguar'}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${isPaid ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>{isPaid ? 'Paguar' : 'Pa paguar'}</span>
-                      <div className="text-right">
-                        <div className="text-sm md:text-base font-bold text-blue-900">£{totalPay.toFixed(2)}</div>
-                        <div className="text-[11px] text-blue-600">{totalHours}h × £{(hourly_rate || 0)}</div>
+                      
+                      {/* Comment section */}
+                      <div className="px-4 py-3 bg-gray-50/50">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={weekNotes[weekLabel] || ''}
+                            onChange={e => setWeekNotes(prev => ({ ...prev, [weekLabel]: e.target.value }))}
+                            placeholder="Shkruaj koment për këtë javë..."
+                            className="p-2 rounded-lg border border-blue-200 text-xs md:text-sm flex-1 bg-white focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all"
+                          />
+                          <button
+                            onClick={() => saveWeekNote(weekLabel, weekNotes[weekLabel] || '')}
+                            disabled={submittingNote === weekLabel}
+                            className="bg-gradient-to-r from-blue-400 to-indigo-400 text-white px-3 md:px-4 py-2 rounded-lg font-bold shadow-sm hover:from-indigo-600 hover:to-blue-600 transition-all duration-300 text-xs md:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {submittingNote === weekLabel ? '⏳' : '💾'}
+                          </button>
+                        </div>
+                        {weekNotes[weekLabel] && (
+                          <div className="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                            <span className="text-xs text-blue-700 italic">💬 {weekNotes[weekLabel]}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                  {/* Koment për këtë javë */}
-                  <div className="px-4 py-3 flex flex-col gap-1">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={weekNotes[weekLabel] || ''}
-                          onChange={e => setWeekNotes(prev => ({ ...prev, [weekLabel]: e.target.value }))}
-                          placeholder="Shkruaj koment për këtë javë..."
-                          className="p-2 rounded-xl border-2 border-blue-200 text-xs md:text-sm flex-1 bg-white"
-                        />
-                        <button
-                          onClick={() => saveWeekNote(weekLabel, weekNotes[weekLabel] || '')}
-                          disabled={submittingNote === weekLabel}
-                          className="bg-gradient-to-r from-blue-400 to-indigo-400 text-white px-3 md:px-4 py-2 rounded-xl font-bold shadow-sm hover:from-indigo-600 hover:to-blue-600 transition-all duration-300 text-xs md:text-sm disabled:opacity-50"
-                        >
-                          {submittingNote === weekLabel ? '⏳' : '💾'}
-                        </button>
-                      </div>
-                      {weekNotes[weekLabel] && (
-                        <span className="text-xs text-blue-700 italic">{weekNotes[weekLabel]}</span>
-                      )}
-                    </div>
-                  </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
