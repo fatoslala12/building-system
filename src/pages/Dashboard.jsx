@@ -20,7 +20,9 @@ const getStartOfWeek = (offset = 0) => {
 const formatDateRange = (startDate) => {
   const endDate = new Date(startDate);
   endDate.setDate(startDate.getDate() + 6);
-  return `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+  const startStr = startDate.toISOString().slice(0, 10);
+  const endStr = endDate.toISOString().slice(0, 10);
+  return `${startStr} - ${endStr}`;
 };
 
 const barColors = ["#60a5fa", "#34d399", "#a78bfa", "#fbbf24", "#f472b6"];
@@ -219,14 +221,21 @@ export default function Dashboard() {
   // Merr orët e punës për user-in nga backend
   useEffect(() => {
     if (user?.role === "user" && user?.employee_id) {
+      console.log('=== DASHBOARD DEBUG ===');
+      console.log('User:', user);
+      console.log('Employee ID:', user.employee_id);
+      console.log('Current week label:', currentWeekLabel);
       console.log('Fetching work hours for user:', user.employee_id);
+      
       api.get(`/api/work-hours/${user.employee_id}`)
         .then(res => {
-          console.log('Work hours response:', res.data);
+          console.log('Work hours API response:', res);
+          console.log('Work hours data:', res.data);
           setHourData({ [user.employee_id]: res.data || {} });
         })
         .catch((error) => {
           console.error('Error fetching work hours:', error);
+          console.error('Error details:', error.response?.data || error.message);
           setHourData({ [user.employee_id]: {} });
         });
     } else if (employees.length > 0) {
@@ -245,7 +254,7 @@ export default function Dashboard() {
       };
       fetchHours();
     }
-  }, [user, employees]);
+  }, [user, employees, currentWeekLabel]);
 
   // Merr detyrat nga backend
   useEffect(() => {
@@ -271,14 +280,18 @@ export default function Dashboard() {
   // Merr pagesat nga backend për user-in
   useEffect(() => {
     if (user?.role === "user" && user?.employee_id) {
+      console.log('=== PAYMENTS DEBUG ===');
       console.log('Fetching payments for user:', user.employee_id);
+      
       api.get(`/api/payments/${user.employee_id}`)
         .then(res => {
-          console.log('Payments response:', res.data);
+          console.log('Payments API response:', res);
+          console.log('Payments data:', res.data);
           setPayments(res.data || []);
         })
         .catch((error) => {
           console.error('Error fetching payments:', error);
+          console.error('Error details:', error.response?.data || error.message);
           setPayments([]);
         });
     }
