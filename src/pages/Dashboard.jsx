@@ -170,6 +170,7 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [managerStats, setManagerStats] = useState({
     totalEmployees: 0,
     activeEmployees: 0,
@@ -259,6 +260,15 @@ export default function Dashboard() {
         .catch(() => setTasks([]));
     }
   }, [employees, user]);
+
+  // Merr pagesat nga backend për user-in
+  useEffect(() => {
+    if (user?.role === "user" && user?.employee_id) {
+      api.get(`/api/payments/${user.employee_id}`)
+        .then(res => setPayments(res.data || []))
+        .catch(() => setPayments([]));
+    }
+  }, [user]);
 
   // Merr statistika për menaxherin
   useEffect(() => {
@@ -542,28 +552,8 @@ export default function Dashboard() {
               Pagesat e Fundit
             </h3>
             {(() => {
-              // Merr pagesat aktuale nga backend për këtë punonjës
-              const userHours = hourData[user.employee_id] || {};
-              const hourlyRate = employees.find(emp => emp.id === user.employee_id)?.hourly_rate || 0;
-              
-              // Merr javët e fundit (përjashto javën aktuale)
-              const weekKeys = Object.keys(userHours).sort((a, b) => new Date(b.split(' - ')[0]) - new Date(a.split(' - ')[0]));
-              const pastWeeks = weekKeys.filter(week => week !== currentWeekLabel).slice(0, 3);
-              
-              const recentPayments = pastWeeks.map(week => {
-                const weekData = userHours[week];
-                const totalHours = Object.values(weekData || {}).reduce((total, day) => 
-                  total + (Number(day?.hours) || 0), 0
-                );
-                return {
-                  week,
-                  hours: totalHours,
-                  amount: totalHours * hourlyRate,
-                  date: week.split(' - ')[0]
-                };
-              }).filter(payment => payment.hours > 0);
-
-              if (recentPayments.length === 0) {
+              // Merr pagesat aktuale nga tab payments për këtë punonjës
+              if (payments.length === 0) {
                 return (
                   <div className="text-center py-8">
                     <div className="text-4xl mb-4">💳</div>
@@ -572,29 +562,36 @@ export default function Dashboard() {
                 );
               }
 
+              // Merr 3 pagesat e fundit
+              const recentPayments = payments
+                .sort((a, b) => new Date(b.payment_date || b.created_at || b.date) - new Date(a.payment_date || a.created_at || a.date))
+                .slice(0, 3);
+
               return (
                 <div className="space-y-4">
                   {recentPayments.map((payment, index) => (
-                    <div key={index} className="flex items-center justify-between bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 px-4 py-3 rounded-lg">
+                    <div key={payment.id || index} className="flex items-center justify-between bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 px-4 py-3 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold">
                           £
                         </div>
                         <div>
                           <p className="font-semibold text-gray-800">
-                            Java: {new Date(payment.date).toLocaleDateString('sq-AL')}
+                            {payment.week_label || payment.week || `Pagesa #${payment.id}`}
                           </p>
                           <p className="text-sm text-gray-600">
-                            {payment.hours} orë të punuara
+                            {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('sq-AL') : 
+                             payment.created_at ? new Date(payment.created_at).toLocaleDateString('sq-AL') :
+                             payment.date ? new Date(payment.date).toLocaleDateString('sq-AL') : 'N/A'}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-emerald-700">
-                          £{payment.amount.toFixed(2)}
+                          £{payment.amount ? Number(payment.amount).toFixed(2) : '0.00'}
                         </p>
                         <p className="text-xs text-gray-500">
-                          £{hourlyRate}/orë
+                          {payment.is_paid ? '✅ Paguar' : '⏳ Pa paguar'}
                         </p>
                       </div>
                     </div>

@@ -98,20 +98,46 @@ export default function MyProfile() {
       ? `https://building-system.onrender.com/api/tasks/manager/${user.employee_id}`
       : `https://building-system.onrender.com/api/tasks?assignedTo=${user.employee_id}&status=completed`;
     
+    console.log('Fetching completed tasks for user:', user.employee_id, 'from endpoint:', endpoint);
+    
     axios.get(endpoint, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => {
-        // Për manager, filtriro vetëm detyrat e përfunduara për punonjësit e tij – por në profil duam vetë-menaxherin
-        let tasksData = res.data || [];
+        const allTasks = res.data || [];
+        console.log('All completed tasks received:', allTasks.length);
+        
+        // Additional filtering to ensure only tasks assigned to current user
+        let tasksData = allTasks;
         if (user?.role === 'manager') {
-          tasksData = tasksData.filter(task => task.status === 'completed' && (
+          tasksData = allTasks.filter(task => task.status === 'completed' && (
             String(task.assigned_to ?? task.assignedTo) === String(user.employee_id)
           ));
+        } else if (user?.role === 'user') {
+          // Double-check filtering for user role
+          tasksData = allTasks.filter(task => {
+            const assignedId = task.assigned_to ?? task.assignedTo ?? task.assignedToId;
+            const assignedEmail = (task.assigned_email ?? task.assignedEmail ?? task.assignedToEmail ?? '').toLowerCase();
+            const myEmail = (user?.email || '').toLowerCase();
+            
+            const isAssignedToMe = (
+              (assignedId != null && String(assignedId) === String(user.employee_id)) ||
+              (assignedEmail && assignedEmail === myEmail) ||
+              (typeof task.assignedTo === 'string' && task.assignedTo.toLowerCase() === myEmail)
+            );
+            
+            console.log('Completed task:', task.id, 'assigned_to:', assignedId, 'isAssignedToMe:', isAssignedToMe);
+            return isAssignedToMe;
+          });
         }
+        
+        console.log('Filtered completed tasks for user:', tasksData.length);
         setTasks(tasksData);
       })
-      .catch(() => setTasks([]));
+      .catch((error) => {
+        console.error('Error fetching completed tasks:', error);
+        setTasks([]);
+      });
   }, [user, token]);
 
   // Funksion për ndryshimin e password-it

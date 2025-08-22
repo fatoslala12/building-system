@@ -45,15 +45,41 @@ export default function MyTasks() {
       ? `https://building-system.onrender.com/api/tasks/manager/${user.employee_id}`
       : `https://building-system.onrender.com/api/tasks?assignedTo=${user.employee_id}`;
     
+    console.log('Fetching tasks for user:', user.employee_id, 'from endpoint:', endpoint);
+    
     axios
       .get(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
-        setTasks(res.data || []);
+        const allTasks = res.data || [];
+        console.log('All tasks received:', allTasks.length);
+        
+        // Additional filtering for user role to ensure only assigned tasks
+        let filteredTasks = allTasks;
+        if (user?.role === "user") {
+          filteredTasks = allTasks.filter(task => {
+            const assignedId = task.assigned_to ?? task.assignedTo ?? task.assignedToId;
+            const assignedEmail = (task.assigned_email ?? task.assignedEmail ?? task.assignedToEmail ?? '').toLowerCase();
+            const myEmail = (user?.email || '').toLowerCase();
+            
+            const isAssignedToMe = (
+              (assignedId != null && String(assignedId) === String(user.employee_id)) ||
+              (assignedEmail && assignedEmail === myEmail) ||
+              (typeof task.assignedTo === 'string' && task.assignedTo.toLowerCase() === myEmail)
+            );
+            
+            console.log('Task:', task.id, 'assigned_to:', assignedId, 'assignedTo:', task.assignedTo, 'isAssignedToMe:', isAssignedToMe);
+            return isAssignedToMe;
+          });
+        }
+        
+        console.log('Filtered tasks for user:', filteredTasks.length);
+        setTasks(filteredTasks);
         setLoading(false);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('Error fetching tasks:', error);
         setTasks([]);
         setLoading(false);
       });
