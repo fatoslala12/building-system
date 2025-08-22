@@ -168,24 +168,24 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [hourData, setHourData] = useState({});
-  const [contracts, setContracts] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [invoices, setInvoices] = useState([]);
-  const [expenses, setExpenses] = useState([]);
   const [payments, setPayments] = useState([]);
-  const [managerStats, setManagerStats] = useState({
-    totalEmployees: 0,
-    activeEmployees: 0,
-    totalHoursThisWeek: 0,
-    totalPayThisWeek: 0,
-    pendingTasks: 0,
-    completedTasks: 0,
-    mySites: []
-  });
+  const [contracts, setContracts] = useState([]);
+  const [managerStats, setManagerStats] = useState({});
   const [loading, setLoading] = useState(true);
-  const token = localStorage.getItem("token");
+  const [token] = useState(localStorage.getItem("token"));
 
-  const currentWeekLabel = formatDateRange(getStartOfWeek());
+  // Basic debugging at component level
+  console.log('=== DASHBOARD COMPONENT RENDER ===');
+  console.log('User object:', user);
+  console.log('User role:', user?.role);
+  console.log('User employee_id:', user?.employee_id);
+  console.log('Component state - hourData:', hourData);
+  console.log('Component state - tasks:', tasks);
+  console.log('Component state - payments:', payments);
+
+  const currentWeekStart = getStartOfWeek();
+  const currentWeekLabel = formatDateRange(currentWeekStart);
   const previousWeeks = [
     { label: formatDateRange(getStartOfWeek(-1)), start: getStartOfWeek(-1) },
     { label: formatDateRange(getStartOfWeek(-2)), start: getStartOfWeek(-2) }
@@ -254,7 +254,7 @@ export default function Dashboard() {
       };
       fetchHours();
     }
-  }, [user, employees, currentWeekLabel]);
+  }, [user, employees]); // Removed currentWeekLabel dependency
 
   // Merr detyrat nga backend
   useEffect(() => {
